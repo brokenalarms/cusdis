@@ -1,6 +1,6 @@
 import Widget from './Widget.svelte'
 
-window.CUSDIS = {}
+window.CUSDIS = window.CUSDIS || {}
 
 const parent = window.parent
 const target = document.querySelector('#root')

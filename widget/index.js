@@ -1,4 +1,4 @@
-window.CUSDIS = {}
+window.CUSDIS = window.CUSDIS || {}
 
 const makeIframeContent = (target) => {
   const host = target.dataset.host || 'https://cusdis.com'
@@ -43,7 +43,7 @@ function createIframe(target) {
   return singleTonIframe
 }
 
-function postMessage(event, data) {
+function sendMessageToChild(event, data) {
   if (singleTonIframe) {
     singleTonIframe.contentWindow.postMessage(
       JSON.stringify({
@@ -66,7 +66,7 @@ function listenEvent(iframe, target) {
           case 'onload':
             {
               if (target.dataset.theme === 'auto') {
-                postMessage(
+                sendMessageToChild(
                   'setTheme',
                   darkModeQuery.matches ? 'dark' : 'light',
                 )
@@ -88,7 +88,7 @@ function listenEvent(iframe, target) {
   function onChangeColorScheme(e) {
     const isDarkMode = e.matches
     if (target.dataset.theme === 'auto') {
-      postMessage('setTheme', isDarkMode ? 'dark' : 'light')
+      sendMessageToChild('setTheme', isDarkMode ? 'dark' : 'light')
     }
   }
 
@@ -114,7 +114,7 @@ window.renderCusdis = render
 window.CUSDIS.renderTo = render
 
 window.CUSDIS.setTheme = function (theme) {
-  postMessage('setTheme', theme)
+  sendMessageToChild('setTheme', theme)
 }
 
 function initial() {
