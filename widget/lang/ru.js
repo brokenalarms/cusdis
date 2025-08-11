@@ -4,7 +4,7 @@ window.CUSDIS_LOCALE = {
   loading: 'Загружаем комментарии...',
 
   // comment
-  email: 'Email (необязательно)',
+  email: 'Email',
   nickname: 'Имя',
   reply_placeholder: 'Ваш комментарий',
   reply_btn: 'Ответить',

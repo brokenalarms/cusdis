@@ -36,6 +36,11 @@
       return
     }
 
+    if (!email) {
+      alert(t('email_is_required'))
+      return
+    }
+
     submittedAt = Date.now()
 
     try {

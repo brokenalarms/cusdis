@@ -4,7 +4,7 @@ window.CUSDIS_LOCALE = {
   loading: 'Chargement',
 
   // comment
-  email: 'Email (optionnel)',
+  email: 'Email',
   nickname: 'Pseudonyme',
   reply_placeholder: 'Commentaire...',
   reply_btn: 'Répondre',

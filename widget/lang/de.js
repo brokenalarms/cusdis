@@ -4,7 +4,7 @@ window.CUSDIS_LOCALE=  {
   loading: 'Lädt',
 
   // comment
-  email: 'Email (optional)',
+  email: 'Email',
   nickname: 'Spitzname',
   reply_placeholder: 'Antworten...',
   reply_btn: 'Antworten',
