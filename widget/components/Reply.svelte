@@ -112,18 +112,42 @@
   </div>
 
   <!-- Visually-hidden anti-spam fields -->
-  <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+  <div
+    style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;"
+    aria-hidden="true"
+  >
     <!-- legacy fixed-name honeypot -->
     <label for="required_field">Required field</label>
-    <input id="required_field" name="required_field" type="text" tabindex="-1" autocomplete="off" required bind:value={required_field} />
+    <input
+      id="required_field"
+      name="required_field"
+      type="text"
+      tabindex="-1"
+      autocomplete="off"
+      required
+      bind:value={required_field}
+    />
 
     <!-- rotating-name honeypot -->
     <label for={honeypotName}>Required field</label>
-    <input name={honeypotName} type="text" tabindex="-1" autocomplete="off" required bind:value={honeypotValue} />
+    <input
+      name={honeypotName}
+      type="text"
+      tabindex="-1"
+      autocomplete="off"
+      required
+      bind:value={honeypotValue}
+    />
 
     <!-- checkbox trap: must remain unchecked -->
     <label for="agree_all">Agree to all</label>
-    <input id="agree_all" name="agree_all" type="checkbox" tabindex="-1" bind:checked={trapChecked} />
+    <input
+      id="agree_all"
+      name="agree_all"
+      type="checkbox"
+      tabindex="-1"
+      bind:checked={trapChecked}
+    />
 
     <!-- time trap is sent via renderedAt/submittedAt in payload -->
   </div>
@@ -133,7 +157,7 @@
       on:click={addComment}
       cusdis-disabled={loading}
       disabled={loading}
-      class="text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl cursor-pointer transition-transform duration-300 ease-in-out sm:hover:scale-104"
+      class="text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl cursor-pointer transition-transform duration-300 ease-in-out sm:hover:scale-104"
     >
       {#if loading}
         <span

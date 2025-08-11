@@ -93,7 +93,7 @@
 {#if !error}
   <div class:dark={theme === 'dark'}>
     {#if message}
-      <div class="mx-auto text-center text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104">
+      <div class="mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104">
         {message}
       </div>
     {/if}

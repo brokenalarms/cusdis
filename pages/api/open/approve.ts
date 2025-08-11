@@ -2,7 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { resolvedConfig } from '../../../utils.server'
 import jwt from 'jsonwebtoken'
 import { CommentService } from '../../../service/comment.service'
-import { SecretKey, TokenBody, TokenService } from '../../../service/token.service'
+import {
+  SecretKey,
+  TokenBody,
+  TokenService,
+} from '../../../service/token.service'
 import { UsageService } from '../../../service/usage.service'
 import { SubscriptionService } from '../../../service/subscription.service'
 import { UsageLabel, usageLimitation } from '../../../config.common'
@@ -59,7 +63,10 @@ export default async function handler(
     let tokenBody: TokenBody.ApproveComment
 
     try {
-      tokenBody = tokenService.validate(token, SecretKey.ApproveComment) as TokenBody.ApproveComment
+      tokenBody = tokenService.validate(
+        token,
+        SecretKey.ApproveComment,
+      ) as TokenBody.ApproveComment
     } catch (e) {
       res.status(403)
       res.send('Invalid token')
@@ -81,14 +88,14 @@ export default async function handler(
           // append the same moderator reply to each, if provided
           if (replyContent) {
             await commentService.addCommentAsModerator(id, replyContent, {
-              owner: tokenBody.owner
+              owner: tokenBody.owner,
             })
           }
 
           approvedCount += 1
 
           // track usage for Quick Approve, one unit per comment
-          await usageService.incr(UsageLabel.QuickApprove)
+          await usageService.incr(UsageLabel.QuickApprove, tokenBody.owner.id)
         } catch (e) {
           // skip failures and continue
         }
@@ -97,13 +104,13 @@ export default async function handler(
       return res.json({
         message: 'success',
         approved: approvedCount,
-        requested: batch.length
+        requested: batch.length,
       })
     }
 
-    if (!await subscriptionService.quickApproveValidate(tokenBody.owner.id)) {
+    if (!(await subscriptionService.quickApproveValidate(tokenBody.owner.id))) {
       res.status(402).json({
-        error: `You have reached the maximum number of Quick Approve on free plan (${usageLimitation.quick_approve}/month). Please upgrade to Pro plan to use Quick Approve more.`
+        error: `You have reached the maximum number of Quick Approve on free plan (${usageLimitation.quick_approve}/month). Please upgrade to Pro plan to use Quick Approve more.`,
       })
       return
     }
@@ -113,15 +120,19 @@ export default async function handler(
 
     // then append reply
     if (replyContent) {
-      await commentService.addCommentAsModerator(tokenBody.commentId, replyContent, {
-        owner: tokenBody.owner
-      })
+      await commentService.addCommentAsModerator(
+        tokenBody.commentId,
+        replyContent,
+        {
+          owner: tokenBody.owner,
+        },
+      )
     }
 
-    await usageService.incr(UsageLabel.QuickApprove)
+    await usageService.incr(UsageLabel.QuickApprove, tokenBody.owner.id)
 
     res.json({
-      message: 'success'
+      message: 'success',
     })
   }
 }
