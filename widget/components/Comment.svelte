@@ -11,49 +11,30 @@
 
 </script>
 
-<div
-  class="my-4"
-  class:pl-4={isChild}
-  class:border-l-2={isChild}
-  class:border-color-gray-200={isChild}
-  class:cusdis-indicator={showIndicator}
->
-  <div class="flex items-center">
-    <div class="mr-2 font-medium dark:text-gray-50">
-      {comment.moderator && comment.moderator.displayName ? comment.moderator.displayName : comment.by_nickname}
+<article class="px-6 py-4 text-base bg-white rounded-lg mb-4 dark:bg-gray-900 {isChild ? 'ml-6 lg:ml-12' : ''}">
+  <footer class="flex justify-between items-center mb-2">
+    <div class="flex items-center">
+      <p class="inline-flex items-center mr-3 text-sm text-gray-900 dark:text-white font-semibold">
+        {comment.moderator?.displayName ?? comment.by_nickname}
+      </p>
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        <time pubdate datetime={comment.parsedCreatedAt}>{comment.parsedCreatedAt}</time>
+      </p>
     </div>
+  </footer>
 
-    {#if comment.moderatorId}
-      <div class="mr-2 dark:bg-gray-500 bg-gray-200 text-xs py-0.5 px-1 rounded dark:text-gray-50">
-        <span>{t('mod_badge')}</span>
-      </div>
-    {/if}
+  <p class="text-gray-500 dark:text-gray-400">{@html comment.parsedContent}</p>
+
+  <div class="flex items-center mt-4 space-x-4">
+    <button type="button" class="flex items-center text-sm text-gray-500 hover:underline dark:text-gray-400 font-medium"
+      on:click={() => showReplyForm = !showReplyForm}>
+      <svg class="mr-1.5 w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 18">
+        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M5 5h5M5 8h2m6-3h2m-5 3h6m2-7H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3v5l5-5h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1Z" />
+      </svg>
+      {t('reply_btn')}
+    </button>
   </div>
-
-  <div class="text-gray-500 text-sm dark:text-gray-400">
-    {comment.parsedCreatedAt}
-  </div>
-
-  <div class="text-gray-500 my-2 dark:text-white">
-    {@html comment.parsedContent}
-  </div>
-
-  {#if comment.replies.data.length > 0}
-    {#each comment.replies.data as child (child.id)}
-      <svelte:self isChild={true} comment={child} />
-    {/each}
-  {/if}
-
-  <div>
-    <button
-      class="font-medium text-sm text-gray-500 dark:bg-transparent dark:text-gray-50"
-      type="button"
-      on:click={(_) => {
-        showReplyForm = !showReplyForm
-      }}>{t('reply_btn')}</button
-    >
-  </div>
-
 
   {#if showReplyForm}
     <div class="mt-4 pl-4 border-l-2 border-gray-200">
@@ -65,6 +46,10 @@
       />
     </div>
   {/if}
+  {#if comment.replies.data.length > 0}
+    {#each comment.replies.data as child (child.id)}
+      <svelte:self isChild={true} comment={child} />
+    {/each}
+  {/if}
 
-
-</div>
+</article>

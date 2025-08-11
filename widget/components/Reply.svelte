@@ -60,7 +60,7 @@
         renderedAt,
         submittedAt,
       })
-      await refresh()
+      // await refresh()
       teardown()
       setMessage(t('comment_has_been_sent'))
     } finally {
@@ -77,40 +77,41 @@
 </script>
 
 <form class="space-y-6" on:submit|preventDefault={addComment}>
-  <div>
-    <label for="nickname" class="block text-sm font-medium text-gray-700 prose dark:text-white dark:prose-invert">{t('nickname')}</label>
-    <div class="mt-1">
-      <input
-        id="nickname"
-        name="nickname"
-        type="text"
-        autocomplete="name"
-        required
-        bind:value={nickname}
-        class="block w-full rounded-md border border-gray-300 bg-transparent py-2 px-3 shadow-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
-        title={t('nickname')}
-      />
+  <div class="sm:grid sm:grid-cols-2 gap-6 sm:gap-12">
+    <div>
+      <label for="nickname" class="py-2 block text-sm font-medium text-gray-700 prose dark:text-white dark:prose-invert">{t('nickname')}</label>
+      <div class="mt-1">
+        <input
+          id="nickname"
+          name="nickname"
+          type="text"
+          autocomplete="name"
+          required
+          bind:value={nickname}
+          class="block w-full rounded-md border border-gray-300 bg-transparent py-2 px-3 shadow-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:text-white dark:placeholder-gray-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
+          title={t('nickname')}
+        />
+      </div>
     </div>
-  </div>
 
-  <div>
-    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-white">{t('email')}</label>
-    <div class="mt-1">
-      <input
-        id="email"
-        name="email"
-        type="email"
-        autocomplete="email"
-        required
-        bind:value={email}
-        class="block w-full rounded-md border border-gray-300 bg-transparent py-2 px-3 shadow-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
-        title={t('email')}
-      />
+    <div >
+      <label for="email" class="py-2 block text-sm font-medium text-gray-700 dark:text-white">{t('email')}</label>
+      <div class="mt-1">
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          bind:value={email}
+          class="block w-full rounded-md border border-gray-300 bg-transparent py-2 px-3 shadow-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:text-white dark:placeholder-gray-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
+          title={t('email')}
+        />
+      </div>
     </div>
-  </div>
-
+</div>
   <div>
-    <label for="reply_content" class="block text-sm font-medium text-gray-700 dark:text-white">{t('reply_placeholder')}</label>
+    <label for="reply_content" class="py-2 block text-sm font-medium text-gray-700 dark:text-white">{t('reply_placeholder')}</label>
     <div class="mt-1">
       <textarea
         id="reply_content"
@@ -118,7 +119,7 @@
         rows="4"
         required
         bind:value={content}
-        class="block w-full rounded-md border border-gray-300 bg-transparent py-2 px-3 shadow-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
+        class="mb-2 block w-full rounded-md border border-gray-300 bg-transparent py-2 px-3 shadow-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:text-white dark:placeholder-gray-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
         title={t('reply_placeholder')}
       ></textarea>
     </div>
