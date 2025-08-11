@@ -6,8 +6,8 @@
   import Reply from './components/Reply.svelte'
   import { t } from './i18n'
 
-  export let attrs
-  export let commentsResult
+  export let attrs = {}
+  export let commentsResult = []
 
   let page = 1
 
@@ -72,9 +72,10 @@
           pageId: attrs.pageId,
         },
       })
-      commentsResult = res.data.data
+      commentsResult = res?.data?.data || []
     } catch (e) {
       error = e
+      console.log(e)
     } finally {
       loadingComments = false
     }

@@ -3,7 +3,7 @@ window.CUSDIS = window.CUSDIS || {}
 const makeIframeContent = (target) => {
   const host = target.dataset.host || 'https://cusdis.com'
   const iframeJsPath = target.dataset.iframe || `${host}/js/iframe.umd.js`
-  const cssPath = `${host}/js/style.css`
+  const cssPath = target.dataset.css || `${host}/js/style.css`
   return `<!DOCTYPE html>
 <html>
   <head>
