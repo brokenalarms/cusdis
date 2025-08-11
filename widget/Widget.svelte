@@ -7,7 +7,7 @@
   import { t } from './i18n'
 
   export let attrs = {}
-  export let commentsResult = []
+  export let commentsResult = { data: [], pageCount: 0 }
 
   let page = 1
 
@@ -72,7 +72,7 @@
           pageId: attrs.pageId,
         },
       })
-      commentsResult = res?.data?.data || []
+      commentsResult = res.data.data
     } catch (e) {
       error = e
       console.log(e)
@@ -109,7 +109,7 @@
         <div class="text-gray-900 dark:text-gray-100">
           {t('loading')}...
         </div>
-      {:else}
+      {:else if commentsResult && commentsResult.data}
         {#each commentsResult.data as comment (comment.id)}
           <Comment {comment} firstFloor={true} />
         {/each}
