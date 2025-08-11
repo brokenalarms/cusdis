@@ -4,7 +4,7 @@ window.CUSDIS_LOCALE = {
   loading: 'Načítání',
 
   // comment
-  email: 'Email (volitelný)',
+  email: 'Email',
   nickname: 'Přezdívka',
   reply_placeholder: 'Odpovědět...',
   reply_btn: 'Odpověď',

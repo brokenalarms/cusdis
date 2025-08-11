@@ -4,7 +4,7 @@ window.CUSDIS_LOCALE = {
   loading: 'Đang tải',
 
   // comment
-  email: 'Email (nếu có)',
+  email: 'Email',
   nickname: 'Nickname (tên)',
   reply_placeholder: 'Trả lời...',
   reply_btn: 'Trả lời',
