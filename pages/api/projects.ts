@@ -17,13 +17,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // check subscription
-    if (!await subscriptionService.createProjectValidate(session.uid)) {
-    // if (true) {
-      res.status(402).json({
-        error: 'You have reached the maximum number of sites on free plan. Please upgrade to Pro plan to create more sites.'
-      })
-      return
-    }
+    // if (!await subscriptionService.createProjectValidate(session.uid)) {
+    // // if (true) {
+    //   res.status(402).json({
+    //     error: 'You have reached the maximum number of sites on free plan. Please upgrade to Pro plan to create more sites.'
+    //   })
+    //   return
+    // }
 
     const { title } = req.body as {
       title: string

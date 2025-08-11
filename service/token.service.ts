@@ -10,7 +10,8 @@ export enum UnSubscribeType {
 export enum SecretKey {
   ApproveComment = 'approve_comment',
   Unsubscribe = 'unsubscribe',
-  AcceptNotify = 'accept_notify'
+  AcceptNotify = 'accept_notify',
+  EmailVerify = 'email_verify'
 }
 
 export module TokenBody {
@@ -26,6 +27,12 @@ export module TokenBody {
   export type UnsubscribeNewComment = {
     userId: string,
     type: UnSubscribeType
+  }
+
+  export type EmailVerify = {
+    email: string,
+    appId: string,
+    commentId?: string
   }
 }
 
@@ -91,7 +98,19 @@ export class TokenService {
     )
   }
 
+  genEmailVerifyToken(payload: TokenBody.EmailVerify) {
+    return this.sign(
+      SecretKey.EmailVerify,
+      payload,
+      '3 days'
+    )
+  }
+
   validateAcceptNotifyToken(token: string) {
     return this.validate(token, SecretKey.AcceptNotify) as TokenBody.AcceptNotifyToken
+  }
+
+  validateEmailVerifyToken(token: string) {
+    return this.validate(token, SecretKey.EmailVerify) as TokenBody.EmailVerify
   }
 }

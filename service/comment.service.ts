@@ -8,7 +8,7 @@ import { HookService } from './hook.service'
 import { statService } from './stat.service'
 import { EmailService } from './email.service'
 import { TokenService } from './token.service'
-import { makeConfirmReplyNotificationTemplate } from '../templates/confirm_reply_notification'
+import { makeConfirmReplyNotificationTemplate, makeEmailVerificationTemplate } from '../templates/confirm_reply_notification'
 import utc from 'dayjs/plugin/utc'
 dayjs.extend(utc)
 
@@ -263,5 +263,35 @@ export class CommentService extends RequestScopeService {
       }),
     })
     statService.capture('send_reply_confirm_email')
+  }
+
+  async sendEmailVerification(
+    to: string,
+    pageSlugOrTitle: string,
+    appId: string,
+    commentId?: string,
+  ) {
+    // NOTE: requires TokenService to support genEmailVerifyToken(payload)
+    // If it doesn't exist yet, mirror the implementation of genAcceptNotifyToken
+    // but sign a payload like { email, appId }.
+    const verifyToken = this.tokenService.genEmailVerifyToken({
+      email: to,
+      appId,
+      commentId,
+    })
+
+    const verifyLink = `${resolvedConfig.host}/api/open/confirm_email?token=${verifyToken}`
+
+    this.emailService.send({
+      to,
+      from: this.emailService.sender,
+      subject: `Please verify your email`,
+      html: makeEmailVerificationTemplate({
+        page_slug: pageSlugOrTitle,
+        confirm_url: verifyLink,
+      }),
+    })
+
+    statService.capture('send_email_verification')
   }
 }

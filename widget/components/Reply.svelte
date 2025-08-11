@@ -60,7 +60,11 @@
         renderedAt,
         submittedAt,
       })
-      // await refresh()
+      // If the API indicates auto-approval, refresh to show the new comment immediately
+      const isAutoApproved = (res && res.data && typeof res.data.isAutoApproved === 'boolean') ? res.data.isAutoApproved : false
+      if (isAutoApproved && typeof refresh === 'function') {
+        await refresh()
+      }
       teardown()
       setMessage(t('comment_has_been_sent'))
     } finally {

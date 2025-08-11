@@ -167,6 +167,16 @@ model Comment {
   @@map("comments")
 }
 
+model Commenter {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  verifiedAt  DateTime?
+  firstApprovedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+  @@map("commenters")
+}
+
 model Usage {
   id String @id @default(uuid())
 

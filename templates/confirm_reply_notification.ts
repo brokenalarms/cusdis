@@ -209,3 +209,88 @@ export function makeConfirmReplyNotificationTemplate(data: {
   })
   return tmp
 }
+
+export function makeEmailVerificationTemplate(data: {
+  confirm_url: string
+  page_slug: string
+}) {
+  let tmp = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <style type="text/css">
+      body, p, div { font-family: arial,helvetica,sans-serif; font-size: 14px; }
+      body { color: #000000; }
+      a { color: #1188E6; text-decoration: none; }
+      p { margin: 0; padding: 0; }
+      table.wrapper { width:100% !important; table-layout: fixed; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; -moz-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+      img.max-width { max-width: 100% !important; }
+      @media screen and (max-width:480px) { .columns, .column { width: 100% !important; display: block !important; } }
+    </style>
+  </head>
+  <body>
+    <center class="wrapper" data-link-color="#1188E6" data-body-style="font-size:14px; font-family:arial,helvetica,sans-serif; color:#000000; background-color:#FFFFFF;">
+      <div class="webkit">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" class="wrapper" bgcolor="#FFFFFF">
+          <tr>
+            <td valign="top" bgcolor="#FFFFFF" width="100%">
+              <table width="100%" role="content-container" class="outer" align="center" cellpadding="0" cellspacing="0" border="0">
+                <tr><td width="100%">
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px;" align="center">
+                      <tr>
+                        <td role="modules-container" style="padding:0; color:#000000; text-align:left;" bgcolor="#FFFFFF" width="100%" align="left">
+                          <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                            <tbody><tr>
+                              <td style="padding:18px 0; line-height:22px;" valign="top">
+                                <div><span style="font-size: 18px"><strong>Cusdis</strong></span></div>
+                              </td>
+                            </tr></tbody>
+                          </table>
+                          <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                            <tbody><tr>
+                              <td style="padding:18px 0; line-height:22px;" valign="top">
+                                <div><span style="font-size: 30px"><strong>Verify your email</strong></span></div>
+                              </td>
+                            </tr></tbody>
+                          </table>
+                          <table border="0" cellpadding="0" cellspacing="0" class="module" data-role="module-button" data-type="button" role="module" style="table-layout:fixed;" width="100%">
+                            <tbody><tr>
+                              <td align="left" class="outer-td" style="padding:0;">
+                                <table border="0" cellpadding="0" cellspacing="0" class="wrapper-mobile" style="text-align:center;"><tbody><tr>
+                                  <td align="center" bgcolor="#333333" class="inner-td" style="border-radius:6px; font-size:16px; text-align:left;">
+                                    <a href="{{confirm_url}}" style="background-color:#333333; border:1px solid #333333; border-radius:6px; color:#ffffff; display:inline-block; font-size:14px; padding:12px 18px; text-align:center; text-decoration:none;" target="_blank">Yes, this is my email</a>
+                                  </td>
+                                </tr></tbody></table>
+                              </td>
+                            </tr></tbody>
+                          </table>
+                          <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                            <tbody><tr>
+                              <td style="padding:18px 0; line-height:22px;" valign="top">
+                                <div>You received this because you used this address when commenting on {{page_slug}}. Confirming helps us prevent spam and lets you receive reply notifications.</div>
+                              </td>
+                            </tr></tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td></tr></table>
+                </td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </center>
+  </body>
+</html>`
+
+  Object.keys(data).forEach((key) => {
+    const value = (data as any)[key]
+    tmp = tmp.replace(`{{${key}}}`, value)
+  })
+  return tmp
+}

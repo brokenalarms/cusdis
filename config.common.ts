@@ -5,7 +5,7 @@ export enum UsageLabel {
 }
 
 export const usageLimitation = {
-  [UsageLabel.ApproveComment]: 100,
-  [UsageLabel.QuickApprove]: 10,
-  [UsageLabel.CreateSite]: 1
+  [UsageLabel.ApproveComment]: Number.POSITIVE_INFINITY,
+  [UsageLabel.QuickApprove]: Number.POSITIVE_INFINITY,
+  [UsageLabel.CreateSite]: Number.POSITIVE_INFINITY,
 }

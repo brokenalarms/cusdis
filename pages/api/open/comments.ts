@@ -6,6 +6,9 @@ import {
 import { ProjectService } from '../../../service/project.service'
 import { statService } from '../../../service/stat.service'
 import { apiHandler } from '../../../utils.server'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 export default apiHandler()
   .use(
@@ -147,6 +150,37 @@ export default apiHandler()
       return
     }
 
+    // Determine if this email should be auto-approved
+    let shouldAutoApprove = false
+    try {
+      if (body.email) {
+        // If the email belongs to a verified user OR has any previously approved comment in this project
+        const verifiedUser = await prisma.user.findFirst({
+          where: {
+            email: body.email,
+            emailVerified: { not: null },
+          },
+          select: { id: true },
+        })
+
+        const priorApproved = await prisma.comment.findFirst({
+          where: {
+            page: {
+              projectId: body.appId, // This is the Project.id
+            },
+            by_email: body.email,
+            approved: true,
+          },
+          select: { id: true },
+        })
+
+        shouldAutoApprove = Boolean(verifiedUser && priorApproved)
+      }
+    } catch (e) {
+      // If the allowlist check fails for any reason, fall back to default behavior
+      console.warn('allowlist check failed', e)
+    }
+
     const comment = await commentService.addComment(
       body.appId,
       body.pageId,
@@ -159,6 +193,36 @@ export default apiHandler()
       },
       body.parentId,
     )
+
+    let isAutoApproved = false
+    try {
+      if (shouldAutoApprove && comment && comment.approved !== true) {
+        await prisma.comment.update({
+          where: { id: comment.id },
+          data: { approved: true },
+        })
+        comment.approved = true
+      }
+      isAutoApproved = comment && comment.approved === true
+    } catch (e) {
+      console.warn('auto-approve update failed', e)
+    }
+
+    // If this commenter isn't auto-approved yet, send a one-time email verification
+    if (!isAutoApproved && body.email) {
+      try {
+        // Prefer pageTitle for user-facing text; fall back to pageId
+        const pageLabel = body.pageTitle || body.pageId
+        await commentService.sendEmailVerification(
+          body.email,
+          pageLabel,
+          body.appId,
+          comment.id,
+        )
+      } catch (e) {
+        console.warn('email verification send failed', e)
+      }
+    }
 
     // send confirm email
     if (body.acceptNotify === true && body.email) {
@@ -177,5 +241,6 @@ export default apiHandler()
 
     res.json({
       data: comment,
+      isAutoApproved,
     })
   })

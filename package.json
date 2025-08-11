@@ -1,6 +1,8 @@
 {
   "name": "cusdis",
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "packageManager": "pnpm@9.7.1",
   "scripts": {
     "dev": "DB_TYPE=sqlite npm run dev:general",
@@ -15,7 +17,7 @@
     "db:push:pg": "DB_TYPE=pgsql npm run db:push:general",
     "db:push:mysql": "DB_TYPE=mysql npm run db:push:general",
     "db:push:general": "prisma db push --schema ./prisma/$DB_TYPE/schema.prisma --preview-feature",
-    "db:migrate": "prisma migrate dev --schema ./prisma/$DB_TYPE/schema.prisma",
+    "db:migrate": "DB_TYPE=pgsql prisma migrate dev --schema ./prisma/$DB_TYPE/schema.prisma",
     "db:migrateAll": "prisma migrate dev --schema ./prisma/sqlite/schema.prisma && prisma migrate dev --schema ./prisma/pgsql/schema.prisma && prisma migrate dev --schema ./prisma/mysql/schema.prisma",
     "admin": "prisma studio",
     "widget": "vite --config scripts/vite.config.js",

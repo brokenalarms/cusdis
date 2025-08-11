@@ -27,13 +27,13 @@ export default async function handler(
     }
 
     // check usage
-    if (!await subscriptionService.approveCommentValidate(session.uid)) {
-      res.status(402).json({
-        error:
-          `You have reached the maximum number of approving comments on free plan (${usageLimitation['approve_comment']}/month). Please upgrade to Pro plan to approve more comments.`,
-      })
-      return
-    }
+    // if (!await subscriptionService.approveCommentValidate(session.uid)) {
+    //   res.status(402).json({
+    //     error:
+    //       `You have reached the maximum number of approving comments on free plan (${usageLimitation['approve_comment']}/month). Please upgrade to Pro plan to approve more comments.`,
+    //   })
+    //   return
+    // }
 
     await commentService.approve(commentId)
     await usageService.incr(UsageLabel.ApproveComment)
