@@ -1,12 +1,11 @@
-import { NextApiRequest, NextApiResponse } from 'next'
+import Cors from 'cors'
 import {
   CommentService,
   CommentWrapper,
 } from '../../../service/comment.service'
-import { apiHandler } from '../../../utils.server'
-import Cors from 'cors'
 import { ProjectService } from '../../../service/project.service'
 import { statService } from '../../../service/stat.service'
+import { apiHandler } from '../../../utils.server'
 
 export default apiHandler()
   .use(
@@ -73,9 +72,9 @@ export default apiHandler()
           by_nickname: true,
           moderator: {
             select: {
-              displayName: true
-            }
-          }
+              displayName: true,
+            },
+          },
         },
       },
     )
@@ -106,14 +105,19 @@ export default apiHandler()
     const bodyAny = req.body as any
 
     // 1) Legacy fixed-name honeypot
-    const legacyHoney = bodyAny.required_field || bodyAny.website || bodyAny.honey || bodyAny.hp
+    const legacyHoney =
+      bodyAny.required_field || bodyAny.website || bodyAny.honey || bodyAny.hp
     if (typeof legacyHoney === 'string' && legacyHoney.trim() !== '') {
       res.status(204).end()
       return
     }
 
     // 2) Rotating-name honeypot sent as { honey: { n, v } }
-    if (bodyAny.honey && typeof bodyAny.honey.v === 'string' && bodyAny.honey.v.trim() !== '') {
+    if (
+      bodyAny.honey &&
+      typeof bodyAny.honey.v === 'string' &&
+      bodyAny.honey.v.trim() !== ''
+    ) {
       res.status(204).end()
       return
     }
@@ -165,7 +169,7 @@ export default apiHandler()
           comment.id,
         )
       } catch (e) {
-        // TODO: log error
+        console.log(e)
       }
     }
 
