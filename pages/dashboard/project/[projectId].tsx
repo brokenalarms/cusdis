@@ -200,6 +200,30 @@ function ProjectPage(props: {
     }
   }
 
+  // Batch delete handler uses existing deleteComment()
+  const [isBatchDeleting, setIsBatchDeleting] = React.useState(false)
+  const handleBatchDelete = async () => {
+    if (selectedCommentIds.length === 0) return
+    if (!window.confirm(`Delete ${selectedCommentIds.length} selected comment(s)? This cannot be undone.`)) return
+    setIsBatchDeleting(true)
+    try {
+      const results = await Promise.allSettled(
+        selectedCommentIds.map((id) => deleteComment({ commentId: id }))
+      )
+      const success = results.filter(r => r.status === 'fulfilled').length
+      const failed = results.length - success
+      notifications.show({
+        title: failed ? 'Partially deleted' : 'Deleted',
+        message: failed ? `Deleted ${success}, failed ${failed}` : `Deleted ${success} comment(s)`,
+        color: failed ? 'yellow' : 'red'
+      })
+      setSelectedCommentIds([])
+      await getCommentsQuery.refetch()
+    } finally {
+      setIsBatchDeleting(false)
+    }
+  }
+
   const { commentCount = 0, pageCount = 0 } = getCommentsQuery.data || {}
 
   return (
@@ -210,6 +234,9 @@ function ProjectPage(props: {
             <Group spacing={8}>
               <Button size="xs" color="green" onClick={handleBatchApprove} loading={isBatchApproving} disabled={selectedCommentIds.length === 0}>
                 Approve Selected ({selectedCommentIds.length})
+              </Button>
+              <Button size="xs" color="red" variant="light" onClick={handleBatchDelete} loading={isBatchDeleting} disabled={selectedCommentIds.length === 0}>
+                Delete Selected
               </Button>
               <Button size="xs" variant="subtle" onClick={selectAllOnPage} disabled={!getCommentsQuery.data?.data?.length}>
                 Select All on Page
