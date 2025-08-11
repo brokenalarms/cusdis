@@ -93,7 +93,7 @@
 {#if !error}
   <div class:dark={theme === 'dark'}>
     {#if message}
-      <div class="mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104">
+      <div class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104">
         {message}
       </div>
     {/if}
@@ -105,13 +105,31 @@
     <div class="mt-4 px-1">
       {#if loadingComments}
         <div
-          class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-xl border border-transparent text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white focus:outline-hidden focus:bg-blue-700 focus:outline-hidden focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+          class="w-full py-3 justify-center px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-xl border border-transparent text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white focus:outline-hidden focus:bg-blue-700 focus:outline-hidden focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
         >
-          <span
-            class="animate-spin inline-block size-4 border-3 border-current border-t-transparent text-white rounded-xl"
-            role="status"
-            aria-label="loading"
-          ></span>
+                 <svg
+          class="mr-2 h-5 w-5 animate-spin dark:text-white text-black"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          role="status"
+          aria-label="loading"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          ></path>
+        </svg>  
           Loading comments...
     </div>
       {:else if commentsResult && commentsResult.data}
