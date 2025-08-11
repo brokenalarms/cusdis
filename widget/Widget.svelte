@@ -93,7 +93,7 @@
 {#if !error}
   <div class:dark={theme === 'dark'}>
     {#if message}
-      <div class="w-full p-2 border border-gray-200 bg-transparent dark:text-gray-100 dark:outline-none rounded-xl">
+      <div class="mx-auto text-center text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104">
         {message}
       </div>
     {/if}
@@ -105,7 +105,7 @@
     <div class="mt-4 px-1">
       {#if loadingComments}
         <div
-          class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white focus:outline-hidden focus:bg-blue-700 focus:outline-hidden focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+          class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-xl border border-transparent text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white focus:outline-hidden focus:bg-blue-700 focus:outline-hidden focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
         >
           <span
             class="animate-spin inline-block size-4 border-3 border-current border-t-transparent text-white rounded-xl"

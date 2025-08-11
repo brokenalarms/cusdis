@@ -1,22 +1,18 @@
-import { Comment, Page, Project } from '@prisma/client'
-import { session, signIn } from 'next-auth/client'
-import { useRouter } from 'next/router'
-import React, { useRef } from 'react'
-import { useMutation, useQuery } from 'react-query'
-import { ProjectService } from '../../../service/project.service'
-import { CommentItem, CommentWrapper } from '../../../service/comment.service'
-import { apiClient } from '../../../utils.client'
-import dayjs from 'dayjs'
-import { useForm } from 'react-hook-form'
-import { UserSession } from '../../../service'
-import { Head } from '../../../components/Head'
-import { getSession, resolvedConfig } from '../../../utils.server'
-import { Footer } from '../../../components/Footer'
-import { MainLayout } from '../../../components/Layout'
-import { AiOutlineCode, AiOutlineUnorderedList, AiOutlineControl, AiOutlineCheck, AiOutlineClose, AiOutlineSmile } from 'react-icons/ai'
-import { List, Stack, Box, Text, Group, Anchor, Button, Pagination, Textarea, Title, Center } from '@mantine/core'
-import { MainLayoutData, ViewDataService } from '../../../service/viewData.service'
+import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Textarea } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { Project } from '@prisma/client'
+import { signIn } from 'next-auth/client'
+import { useRouter } from 'next/router'
+import React from 'react'
+import { AiOutlineCheck, AiOutlineSmile } from 'react-icons/ai'
+import { useMutation, useQuery } from 'react-query'
+import { MainLayout } from '../../../components/Layout'
+import { UserSession } from '../../../service'
+import { CommentItem, CommentWrapper } from '../../../service/comment.service'
+import { ProjectService } from '../../../service/project.service'
+import { MainLayoutData, ViewDataService } from '../../../service/viewData.service'
+import { apiClient } from '../../../utils.client'
+import { getSession } from '../../../utils.server'
 
 const getComments = async ({ queryKey }) => {
   const [_key, { projectId, page }] = queryKey
@@ -57,6 +53,11 @@ const deleteProject = async ({ projectId }) => {
 const updateProjectSettings = async ({ projectId, body }) => {
   const res = await apiClient.put(`/project/${projectId}`, body)
   return res.data
+}
+
+const approveMultipleComments = async ({ commentIds }) => {
+  const res = await apiClient.post(`/comments/batchApprove`, { ids: commentIds });
+  return res.data;
 }
 
 function CommentToolbar(props: {
@@ -105,11 +106,11 @@ function CommentToolbar(props: {
           </Button>
         ) : (
           <Button loading={approveCommentMutation.isLoading} onClick={_ => {
-            if (window.confirm("Are you sure you want to approve this comment?")) {
+            // if (window.confirm("Are you sure you want to approve this comment?")) {
               approveCommentMutation.mutate({
                 commentId: props.comment.id
               })
-            }
+            // }
           }} leftIcon={<AiOutlineSmile />} size="xs" variant={'subtle'}>
             Approve
           </Button>
@@ -120,11 +121,11 @@ function CommentToolbar(props: {
           Reply
         </Button>
         <Button loading={deleteCommentMutation.isLoading} onClick={_ => {
-          if (window.confirm("Are you sure you want to delete this comment?")) {
+          // if (window.confirm("Are you sure you want to delete this comment?")) {
             deleteCommentMutation.mutate({
               commentId: props.comment.id
             })
-          }
+          // }
         }} color="red" size="xs" variant={'subtle'}>
           Delete
         </Button>
@@ -175,6 +176,18 @@ function ProjectPage(props: {
   const getCommentsQuery = useQuery(['getComments', { projectId: router.query.projectId as string, page }], getComments, {
   })
 
+  const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([]);
+  const approveMultipleCommentsMutation = useMutation(approveMultipleComments, {
+    onSuccess() {
+      setSelectedCommentIds([]);
+      getCommentsQuery.refetch();
+    }
+  });
+  const toggleCommentSelection = (id: string) => {
+    setSelectedCommentIds(prev =>
+      prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
+    );
+  };
 
   const { commentCount = 0, pageCount = 0 } = getCommentsQuery.data || {}
 
@@ -182,6 +195,16 @@ function ProjectPage(props: {
     <>
       <MainLayout id="comments" project={props.project} {...props.mainLayoutData}>
         <Stack>
+          {selectedCommentIds.length > 0 && (
+            <Button
+              loading={approveMultipleCommentsMutation.isLoading}
+              onClick={() => approveMultipleCommentsMutation.mutate({ commentIds: selectedCommentIds })}
+              size="xs"
+              color="green"
+            >
+              Approve Selected ({selectedCommentIds.length})
+            </Button>
+          )}
           <List listStyleType={'none'} styles={{
             root: {
               border: '1px solid #eee'
@@ -198,6 +221,11 @@ function ProjectPage(props: {
             {getCommentsQuery.data?.data.map(comment => {
               return (
                 <List.Item key={comment.id}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCommentIds.includes(comment.id)}
+                    onChange={() => toggleCommentSelection(comment.id)}
+                  />
                   <Stack>
                     <Stack spacing={4}>
                       <Group spacing={8} sx={{
