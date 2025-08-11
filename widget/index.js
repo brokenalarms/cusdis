@@ -48,7 +48,7 @@ function createIframe(target) {
   return singleTonIframe
 }
 
-function sendMessageToChild(event, data) {
+function postMessageToChild(event, data) {
   if (singleTonIframe) {
     singleTonIframe.contentWindow.postMessage(
       JSON.stringify({
@@ -76,7 +76,7 @@ function listenEvent(iframe, target) {
               : ds === 'light' ? 'light'
               : ds === 'auto' ? (prefersDark ? 'dark' : 'light')
               : (htmlIsDark ? 'dark' : 'light')
-            sendMessageToChild('setTheme', themeToSend)
+            postMessageToChild('setTheme', themeToSend)
           }
           break
           case 'resize':
@@ -94,7 +94,7 @@ function listenEvent(iframe, target) {
   function onChangeColorScheme(e) {
     const isDarkMode = e.matches
     if (target.dataset.theme === 'auto') {
-      sendMessageToChild('setTheme', isDarkMode ? 'dark' : 'light')
+      postMessageToChild('setTheme', isDarkMode ? 'dark' : 'light')
     }
   }
 
@@ -103,7 +103,7 @@ function listenEvent(iframe, target) {
   // Sync when parent toggles Tailwind `.dark` class
   const classObserver = new MutationObserver(() => {
     const isDark = document.documentElement.classList.contains('dark')
-    sendMessageToChild('setTheme', isDark ? 'dark' : 'light')
+    postMessageToChild('setTheme', isDark ? 'dark' : 'light')
   })
   classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 
@@ -128,7 +128,7 @@ window.renderCusdis = render
 window.CUSDIS.renderTo = render
 
 window.CUSDIS.setTheme = function (theme) {
-  sendMessageToChild('setTheme', theme)
+  postMessageToChild('setTheme', theme)
 }
 
 function initial() {
