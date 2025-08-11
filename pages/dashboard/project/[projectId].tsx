@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Textarea } from '@mantine/core'
+import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Textarea, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
@@ -53,11 +53,6 @@ const deleteProject = async ({ projectId }) => {
 const updateProjectSettings = async ({ projectId, body }) => {
   const res = await apiClient.put(`/project/${projectId}`, body)
   return res.data
-}
-
-const approveMultipleComments = async ({ commentIds }) => {
-  const res = await apiClient.post(`/comments/batchApprove`, { ids: commentIds });
-  return res.data;
 }
 
 function CommentToolbar(props: {
@@ -176,18 +171,34 @@ function ProjectPage(props: {
   const getCommentsQuery = useQuery(['getComments', { projectId: router.query.projectId as string, page }], getComments, {
   })
 
-  const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([]);
-  const approveMultipleCommentsMutation = useMutation(approveMultipleComments, {
-    onSuccess() {
-      setSelectedCommentIds([]);
-      getCommentsQuery.refetch();
+  // Selection state for batch actions
+  const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([])
+  const isSelected = React.useCallback((id: string) => selectedCommentIds.includes(id), [selectedCommentIds])
+  const toggleSelected = (id: string) => {
+    setSelectedCommentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+  const selectAllOnPage = () => {
+    const ids = getCommentsQuery.data?.data?.map((c) => c.id) || []
+    setSelectedCommentIds(ids)
+  }
+  const clearSelection = () => setSelectedCommentIds([])
+
+  // Batch approve handler uses existing approveComment()
+  const [isBatchApproving, setIsBatchApproving] = React.useState(false)
+  const handleBatchApprove = async () => {
+    if (selectedCommentIds.length === 0) return
+    setIsBatchApproving(true)
+    try {
+      await Promise.all(selectedCommentIds.map((id) => approveComment({ commentId: id })))
+      notifications.show({ title: 'Approved', message: `Approved ${selectedCommentIds.length} comment(s)`, color: 'green' })
+      setSelectedCommentIds([])
+      await getCommentsQuery.refetch()
+    } catch (e) {
+      notifications.show({ title: 'Error', message: 'Some approvals may have failed', color: 'red' })
+    } finally {
+      setIsBatchApproving(false)
     }
-  });
-  const toggleCommentSelection = (id: string) => {
-    setSelectedCommentIds(prev =>
-      prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
-    );
-  };
+  }
 
   const { commentCount = 0, pageCount = 0 } = getCommentsQuery.data || {}
 
@@ -195,16 +206,20 @@ function ProjectPage(props: {
     <>
       <MainLayout id="comments" project={props.project} {...props.mainLayoutData}>
         <Stack>
-          {selectedCommentIds.length > 0 && (
-            <Button
-              loading={approveMultipleCommentsMutation.isLoading}
-              onClick={() => approveMultipleCommentsMutation.mutate({ commentIds: selectedCommentIds })}
-              size="xs"
-              color="green"
-            >
-              Approve Selected ({selectedCommentIds.length})
-            </Button>
-          )}
+          <Group position="apart">
+            <Group spacing={8}>
+              <Button size="xs" color="green" onClick={handleBatchApprove} loading={isBatchApproving} disabled={selectedCommentIds.length === 0}>
+                Approve Selected ({selectedCommentIds.length})
+              </Button>
+              <Button size="xs" variant="subtle" onClick={selectAllOnPage} disabled={!getCommentsQuery.data?.data?.length}>
+                Select All on Page
+              </Button>
+              <Button size="xs" variant="subtle" onClick={clearSelection} disabled={selectedCommentIds.length === 0}>
+                Clear Selection
+              </Button>
+            </Group>
+            <Text size="xs" color="dimmed">{getCommentsQuery.data?.data?.length || 0} items on this page</Text>
+          </Group>
           <List listStyleType={'none'} styles={{
             root: {
               border: '1px solid #eee'
@@ -221,12 +236,9 @@ function ProjectPage(props: {
             {getCommentsQuery.data?.data.map(comment => {
               return (
                 <List.Item key={comment.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedCommentIds.includes(comment.id)}
-                    onChange={() => toggleCommentSelection(comment.id)}
-                  />
-                  <Stack>
+                  <Group align="flex-start" spacing={12}>
+                    <Checkbox aria-label="Select comment" checked={isSelected(comment.id)} onChange={() => toggleSelected(comment.id)} />
+                    <Stack>
                     <Stack spacing={4}>
                       <Group spacing={8} sx={{
                         fontSize: 14
@@ -259,7 +271,8 @@ function ProjectPage(props: {
                     }}>
                       <CommentToolbar comment={comment} refetch={getCommentsQuery.refetch} />
                     </Group>
-                  </Stack>
+                    </Stack>
+                  </Group>
                 </List.Item>
               )
             })}

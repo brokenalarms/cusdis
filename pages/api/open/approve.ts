@@ -45,8 +45,9 @@ export default async function handler(
       token?: string
     }
 
-    const { replyContent } = req.body as {
+    const { replyContent, ids } = req.body as {
       replyContent?: string
+      ids?: string[]
     }
 
     if (!token) {
@@ -66,6 +67,40 @@ export default async function handler(
     }
 
     // check usage
+    // Batch approve path
+    if (Array.isArray(ids) && ids.length > 0) {
+      // Optional: simple guard against extremely large batches
+      const batch = ids.slice(0, 200)
+
+      let approvedCount = 0
+      for (const id of batch) {
+        try {
+          // approve each comment
+          await commentService.approve(id)
+
+          // append the same moderator reply to each, if provided
+          if (replyContent) {
+            await commentService.addCommentAsModerator(id, replyContent, {
+              owner: tokenBody.owner
+            })
+          }
+
+          approvedCount += 1
+
+          // track usage for Quick Approve, one unit per comment
+          await usageService.incr(UsageLabel.QuickApprove)
+        } catch (e) {
+          // skip failures and continue
+        }
+      }
+
+      return res.json({
+        message: 'success',
+        approved: approvedCount,
+        requested: batch.length
+      })
+    }
+
     if (!await subscriptionService.quickApproveValidate(tokenBody.owner.id)) {
       res.status(402).json({
         error: `You have reached the maximum number of Quick Approve on free plan (${usageLimitation.quick_approve}/month). Please upgrade to Pro plan to use Quick Approve more.`
