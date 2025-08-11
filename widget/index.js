@@ -4,6 +4,12 @@ const makeIframeContent = (target) => {
   const host = target.dataset.host || 'https://cusdis.com'
   const iframeJsPath = target.dataset.iframe || `${host}/js/iframe.umd.js`
   const cssPath = target.dataset.css || `${host}/js/style.css`
+
+  // Decide initial theme for the iframe based on dataset, parent html .dark, or prefers-color-scheme
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const htmlIsDark = document.documentElement.classList.contains('dark')
+  const ds = (target.dataset.theme || '').toLowerCase()
+
   return `<!DOCTYPE html>
 <html>
   <head>
@@ -15,16 +21,15 @@ const makeIframeContent = (target) => {
       window.__DATA__ = ${JSON.stringify(target.dataset)}
     </script>
     <style>
-      :root {
-        color-scheme: light;
-      }
+      html, body { margin: 0; overflow-y: hidden; }
+      /* Hide scrollbars inside the iframe while we drive height from parent */
+      * { scrollbar-width: none; }
+      *::-webkit-scrollbar { display: none; }
     </style>
   </head>
   <body>
     <div id="root"></div>
-    <script src="${iframeJsPath}" type="module">
-      
-    </script>
+    <script src="${iframeJsPath}" type="module"></script>
   </body>
 </html>`
 }
@@ -63,19 +68,20 @@ function listenEvent(iframe, target) {
       const msg = JSON.parse(e.data)
       if (msg.from === 'cusdis') {
         switch (msg.event) {
-          case 'onload':
-            {
-              if (target.dataset.theme === 'auto') {
-                sendMessageToChild(
-                  'setTheme',
-                  darkModeQuery.matches ? 'dark' : 'light',
-                )
-              }
-            }
-            break
+          case 'onload': {
+            const ds = (target.dataset.theme || '').toLowerCase()
+            const htmlIsDark = document.documentElement.classList.contains('dark')
+            const prefersDark = darkModeQuery.matches
+            const themeToSend = ds === 'dark' ? 'dark'
+              : ds === 'light' ? 'light'
+              : ds === 'auto' ? (prefersDark ? 'dark' : 'light')
+              : (htmlIsDark ? 'dark' : 'light')
+            sendMessageToChild('setTheme', themeToSend)
+          }
+          break
           case 'resize':
             {
-              iframe.style.height = (msg.data + 1) + 'px'
+              iframe.style.height = msg.data + 'px'
             }
             break
         }
@@ -94,9 +100,17 @@ function listenEvent(iframe, target) {
 
   darkModeQuery.addEventListener('change', onChangeColorScheme)
 
+  // Sync when parent toggles Tailwind `.dark` class
+  const classObserver = new MutationObserver(() => {
+    const isDark = document.documentElement.classList.contains('dark')
+    sendMessageToChild('setTheme', isDark ? 'dark' : 'light')
+  })
+  classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
   return () => {
     darkModeQuery.removeEventListener('change', onChangeColorScheme)
     window.removeEventListener('message', onMessage)
+    classObserver.disconnect()
   }
 }
 

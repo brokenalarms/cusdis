@@ -27,12 +27,11 @@
     message = msg
   }
 
-  $: {
-    document.documentElement.style.setProperty('color-scheme', theme)
-  }
+  // $: {
+  //   document.documentElement.style.setProperty('color-scheme', theme)
+  // }
 
   onMount(() => {
-
     function onMessage(e) {
       try {
         const msg = JSON.parse(e.data)
@@ -89,13 +88,12 @@
   onMount(() => {
     getComments()
   })
-
 </script>
 
 {#if !error}
   <div class:dark={theme === 'dark'}>
     {#if message}
-      <div class="p-2 mb-4 bg-blue-500 text-white">
+      <div class="w-full p-2 border border-gray-200 bg-transparent dark:text-gray-100 dark:outline-none rounded-xl">
         {message}
       </div>
     {/if}
@@ -106,9 +104,16 @@
 
     <div class="mt-4 px-1">
       {#if loadingComments}
-        <div class="text-gray-900 dark:text-gray-100">
-          {t('loading')}...
-        </div>
+        <div
+          class="py-3 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white focus:outline-hidden focus:bg-blue-700 focus:outline-hidden focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          <span
+            class="animate-spin inline-block size-4 border-3 border-current border-t-transparent text-white rounded-xl"
+            role="status"
+            aria-label="loading"
+          ></span>
+          Loading comments...
+    </div>
       {:else if commentsResult && commentsResult.data}
         {#each commentsResult.data as comment (comment.id)}
           <Comment {comment} firstFloor={true} />
@@ -130,7 +135,7 @@
     <div class="my-8" />
 
     <div class="text-center text-gray-500 dark:text-gray-100 text-xs">
-      <a class="underline " href="https://cusdis.com">{t('powered_by')}</a>
+      <a class="underline" href="https://cusdis.com">{t('powered_by')}</a>
     </div>
   </div>
 {/if}

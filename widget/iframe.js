@@ -30,11 +30,18 @@ function requestResize() {
   postMessage('resize', document.documentElement.offsetHeight)
 }
 
+// Observe size/layout changes (works during textarea drag)
+const ro = new ResizeObserver(() => requestResize())
+ro.observe(document.documentElement)
+if (document.body) ro.observe(document.body)
+
 const resizeObserve = new MutationObserver(() => {
   requestResize()
 })
 
-resizeObserve.observe(target, {
+resizeObserve.observe(document, {
   childList: true,
   subtree: true
 })
+
+document.addEventListener('drag', requestResize, true)
