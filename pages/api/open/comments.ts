@@ -102,6 +102,37 @@ export default apiHandler()
       pageTitle?: string
     }
 
+    // Anti-spam traps: return 204 (silent success) so bots think it worked
+    const bodyAny = req.body as any
+
+    // 1) Legacy fixed-name honeypot
+    const legacyHoney = bodyAny.required_field || bodyAny.website || bodyAny.honey || bodyAny.hp
+    if (typeof legacyHoney === 'string' && legacyHoney.trim() !== '') {
+      res.status(204).end()
+      return
+    }
+
+    // 2) Rotating-name honeypot sent as { honey: { n, v } }
+    if (bodyAny.honey && typeof bodyAny.honey.v === 'string' && bodyAny.honey.v.trim() !== '') {
+      res.status(204).end()
+      return
+    }
+
+    // 3) Checkbox trap must remain unchecked
+    if (bodyAny.trapChecked === true) {
+      res.status(204).end()
+      return
+    }
+
+    // 4) Time trap: reject submits that happen too fast after render
+    const now = Date.now()
+    const renderedAtNum = Number(bodyAny.renderedAt)
+    const submittedAtNum = Number(bodyAny.submittedAt) || now
+    if (!Number.isNaN(renderedAtNum) && submittedAtNum - renderedAtNum < 1500) {
+      res.status(204).end()
+      return
+    }
+
     const isDeleted = await projectService.isDeleted(body.appId)
 
     if (isDeleted) {

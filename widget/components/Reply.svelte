@@ -7,6 +7,14 @@
   let content = ''
   let nickname = ''
   let email = ''
+  let required_field = '' // honeypot
+
+  // anti-spam traps
+  const renderedAt = Date.now()
+  let submittedAt = 0
+  const honeypotName = `required_${Math.random().toString(36).slice(2, 10)}`
+  let honeypotValue = ''
+  let trapChecked = false // must remain false; bots often toggle all controls
 
   let loading = false
 
@@ -28,6 +36,8 @@
       return
     }
 
+    submittedAt = Date.now()
+
     try {
       loading = true
       const res = await api.post('/api/open/comments', {
@@ -39,6 +49,11 @@
         parentId,
         pageUrl,
         pageTitle,
+        required_field, // legacy honeypot name (kept for back-compat)
+        honey: { n: honeypotName, v: honeypotValue },
+        trapChecked,
+        renderedAt,
+        submittedAt,
       })
       await refresh()
       teardown()
@@ -94,6 +109,23 @@
       title={t('reply_placeholder')}
       bind:value={content}
     />
+  </div>
+
+  <!-- Visually-hidden anti-spam fields -->
+  <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+    <!-- legacy fixed-name honeypot -->
+    <label for="required_field">Required field</label>
+    <input id="required_field" name="required_field" type="text" tabindex="-1" autocomplete="off" required bind:value={required_field} />
+
+    <!-- rotating-name honeypot -->
+    <label for={honeypotName}>Required field</label>
+    <input name={honeypotName} type="text" tabindex="-1" autocomplete="off" required bind:value={honeypotValue} />
+
+    <!-- checkbox trap: must remain unchecked -->
+    <label for="agree_all">Agree to all</label>
+    <input id="agree_all" name="agree_all" type="checkbox" tabindex="-1" bind:checked={trapChecked} />
+
+    <!-- time trap is sent via renderedAt/submittedAt in payload -->
   </div>
 
   <div class="px-1">
