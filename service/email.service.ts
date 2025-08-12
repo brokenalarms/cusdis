@@ -29,19 +29,27 @@ export class EmailService {
     });
     if (this.isSMTPEnable()) {
       console.log('[EmailService] Using SMTP with sender', this.sender);
+      const transporter = nodemailer.createTransport({
+        host: resolvedConfig.smtp.host,
+        port: resolvedConfig.smtp.port,
+        secure: resolvedConfig.smtp.secure,
+        auth: resolvedConfig.smtp.auth,
+        logger: true,
+        debug: true,
+        connectionTimeout: 15000,
+        greetingTimeout: 10000,
+        socketTimeout: 20000,
+      });
       try {
-        const transporter = nodemailer.createTransport({
-          host: resolvedConfig.smtp.host,
-          port: resolvedConfig.smtp.port,
-          secure: resolvedConfig.smtp.secure,
-          auth: resolvedConfig.smtp.auth,
-        });
-        await transporter.sendMail(msg);
-        console.log('[EmailService] SMTP email sent successfully');
-      } catch (error) {
-        console.error('[EmailService] SMTP send error:', error);
-        throw error;
+        console.log('[EmailService] Verifying SMTP transport...');
+        await transporter.verify();
+        console.log('[EmailService] SMTP transport verified OK');
+      } catch (verifyErr) {
+        console.error('[EmailService] SMTP verify failed:', verifyErr);
+        throw verifyErr;
       }
+      const info = await transporter.sendMail(msg);
+      console.log('[EmailService] SMTP email sent successfully', { messageId: (info as any)?.messageId, response: (info as any)?.response });
     } else if (this.isThirdpartyEnable()) {
       console.log('[EmailService] Using SendGrid with sender', this.sender);
       try {
@@ -53,6 +61,8 @@ export class EmailService {
         console.error('[EmailService] SendGrid send error:', error);
         throw error;
       }
+    } else {
+      console.warn('[EmailService] No email transport configured (SMTP/SendGrid disabled)');
     }
   }
 }
