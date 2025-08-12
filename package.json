@@ -68,6 +68,7 @@
     "react-query": "3.6.0",
     "redaxios": "^0.4.1",
     "reflect-metadata": "^0.1.13",
+    "resend": "^6.0.1",
     "rollup-plugin-svelte": "^7.1.0",
     "svelte": "^3.37.0",
     "svelte-preprocess": "^4.7.0",
