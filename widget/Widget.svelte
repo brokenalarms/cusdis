@@ -27,10 +27,6 @@
     message = msg
   }
 
-  $: {
-    document.documentElement.style.setProperty('color-scheme', theme)
-  }
-
   onMount(() => {
     function onMessage(e) {
       try {
@@ -54,25 +50,15 @@
   })
 
   function addCommentOptimistically(comment, parentId = null) {
-    console.log(
-      'Before adding comment:',
-      JSON.stringify(commentsResult, null, 2),
-    )
-
     if (parentId) {
       // Add as reply to existing comment
       const findAndAddReply = (comments) => {
         for (let c of comments) {
           if (c.id === parentId) {
-            console.log('Found parent comment, adding reply:', {
-              parentId,
-              newCommentId: comment.id,
-            })
             if (!c.replies) c.replies = { data: [] }
             // Ensure the new comment has the proper structure
             if (!comment.replies) comment.replies = { data: [] }
             c.replies.data = [comment, ...c.replies.data]
-            console.log('Updated parent comment:', c)
             return true
           }
           // Recursively search replies
@@ -84,8 +70,7 @@
         }
         return false
       }
-      const found = findAndAddReply(commentsResult.data)
-      console.log('Parent found and updated:', found)
+      findAndAddReply(commentsResult.data)
     } else {
       // Add as top-level comment
       commentsResult.data = [comment, ...commentsResult.data]
@@ -93,10 +78,6 @@
 
     // Trigger reactivity
     commentsResult = { ...commentsResult }
-    console.log(
-      'After adding comment:',
-      JSON.stringify(commentsResult, null, 2),
-    )
   }
 
   setContext('api', api)

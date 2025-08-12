@@ -65,7 +65,6 @@
       // If the comment was approved, add it optimistically instead of refetching
       const comment = res.data.data
       const isApproved = comment && comment.approved === true
-      console.log('API returned comment:', comment)
 
       if (isApproved && typeof addCommentOptimistically === 'function') {
         addCommentOptimistically(comment, parentId)
