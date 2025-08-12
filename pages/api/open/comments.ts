@@ -211,36 +211,31 @@ export default apiHandler()
     // If this commenter isn't auto-approved yet, or they have verified their email, send a one-time email verification
     if (!isAutoApproved && body.email && !hasVerifiedEmail) {
       const pageLabel = body.pageTitle || body.pageId
-      console.log('[comments] sending verify email', {
-        email: body.email,
-        isAutoApproved,
-        hasVerifiedEmail,
-        appId: body.appId,
-        commentId: comment.id,
-        pageLabel,
-      })
-      commentService.sendEmailVerification(
-        body.email,
-        pageLabel,
-        body.appId,
-        comment.id,
-      ).then(() => {
-        console.log('[comments] verify email queued OK', { email: body.email, commentId: comment.id })
-      }).catch((e) => {
+      try {
+        await commentService.sendEmailVerification(
+          body.email,
+          pageLabel,
+          body.appId,
+          comment.id,
+        )
+      } catch (e) {
         console.warn('[comments] verify email failed', e)
-      })
+      }
     } else {
       console.log('[comments] skip verify email', { isAutoApproved, hasVerifiedEmail, hasEmail: Boolean(body.email) })
     }
 
     // send confirm email
     if (body.acceptNotify === true && body.email) {
-      console.log('[comments] sending confirm-reply email', { email: body.email, commentId: comment.id })
-      commentService.sendConfirmReplyNotificationEmail(
-        body.email,
-        body.pageTitle,
-        comment.id,
-      )
+      try {
+        await commentService.sendConfirmReplyNotificationEmail(
+          body.email,
+          body.pageTitle,
+          comment.id,
+        )
+      } catch (e) {
+        console.warn('[comments] confirm-reply email failed', e)
+      }
     }
 
     statService.capture('add_comment')

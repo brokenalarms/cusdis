@@ -85,11 +85,7 @@ export class NotificationService extends RequestScopeService {
         }),
       }
 
-      try {
-        this.emailService.send(msg)
-      } catch (e) {
-        // TODO:
-      }
+      await this.emailService.send(msg)
     }
   }
 }
