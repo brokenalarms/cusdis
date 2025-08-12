@@ -17,5 +17,6 @@ window.CUSDIS_LOCALE = {
   
     comment_has_been_sent:
       'Tu comentario ha sido enviado. Por favor, espera su aprobación.',
+    receive_email_notification_of_replies: 'Envíame un email cuando alguien responda a mi comentario',
   }
   

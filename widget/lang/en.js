@@ -18,4 +18,5 @@ export default {
 
   comment_has_been_sent:
     'Your comment has been sent. Please wait for approval.',
+  receive_email_notification_of_replies: 'Email me when someone replies to my comment',
 }

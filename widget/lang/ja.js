@@ -17,4 +17,5 @@ window.CUSDIS_LOCALE = {
 
   comment_has_been_sent:
     'コメントは承認後、表示されます',
+  receive_email_notification_of_replies: '私のコメントに返信があった時にメールで通知する',
 }

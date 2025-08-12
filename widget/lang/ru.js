@@ -17,4 +17,5 @@ window.CUSDIS_LOCALE = {
 
   comment_has_been_sent:
     'Комментарий отправлен. Он будет опубликован после модерации.',
+  receive_email_notification_of_replies: 'Уведомить по эл. почте о ответах на мой комментарий',
 }

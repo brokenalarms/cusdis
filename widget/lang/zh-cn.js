@@ -17,4 +17,5 @@ window.CUSDIS_LOCALE = {
 
   comment_has_been_sent:
     '评论已发送，管理员审核通过后会展示',
+  receive_email_notification_of_replies: '有人回复我的评论时发邮件通知我',
 }
