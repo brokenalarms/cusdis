@@ -249,6 +249,5 @@ export default apiHandler()
 
     res.json({
       data: comment,
-      isAutoApproved,
     })
   })

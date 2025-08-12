@@ -27,9 +27,9 @@
     message = msg
   }
 
-  // $: {
-  //   document.documentElement.style.setProperty('color-scheme', theme)
-  // }
+  $: {
+    document.documentElement.style.setProperty('color-scheme', theme)
+  }
 
   onMount(() => {
     function onMessage(e) {
@@ -53,9 +53,56 @@
     }
   })
 
+  function addCommentOptimistically(comment, parentId = null) {
+    console.log(
+      'Before adding comment:',
+      JSON.stringify(commentsResult, null, 2),
+    )
+
+    if (parentId) {
+      // Add as reply to existing comment
+      const findAndAddReply = (comments) => {
+        for (let c of comments) {
+          if (c.id === parentId) {
+            console.log('Found parent comment, adding reply:', {
+              parentId,
+              newCommentId: comment.id,
+            })
+            if (!c.replies) c.replies = { data: [] }
+            // Ensure the new comment has the proper structure
+            if (!comment.replies) comment.replies = { data: [] }
+            c.replies.data = [comment, ...c.replies.data]
+            console.log('Updated parent comment:', c)
+            return true
+          }
+          // Recursively search replies
+          if (c.replies && c.replies.data && c.replies.data.length > 0) {
+            if (findAndAddReply(c.replies.data)) {
+              return true
+            }
+          }
+        }
+        return false
+      }
+      const found = findAndAddReply(commentsResult.data)
+      console.log('Parent found and updated:', found)
+    } else {
+      // Add as top-level comment
+      commentsResult.data = [comment, ...commentsResult.data]
+    }
+
+    // Trigger reactivity
+    commentsResult = { ...commentsResult }
+    console.log(
+      'After adding comment:',
+      JSON.stringify(commentsResult, null, 2),
+    )
+  }
+
   setContext('api', api)
   setContext('attrs', attrs)
   setContext('refresh', getComments)
+  setContext('addCommentOptimistically', addCommentOptimistically)
   setContext('setMessage', setMessage)
 
   async function getComments(p = 1) {
@@ -93,7 +140,9 @@
 {#if !error}
   <div class:dark={theme === 'dark'}>
     {#if message}
-      <div class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104">
+      <div
+        class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104"
+      >
         {message}
       </div>
     {/if}
@@ -107,31 +156,31 @@
         <div
           class="w-full py-3 justify-center px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-xl border border-transparent text-sm bg-gray-200 p-2 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white focus:outline-hidden focus:bg-blue-700 focus:outline-hidden focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
         >
-                 <svg
-          class="mr-2 h-5 w-5 animate-spin dark:text-white text-black"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          role="status"
-          aria-label="loading"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          ></circle>
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          ></path>
-        </svg>  
+          <svg
+            class="mr-2 h-5 w-5 animate-spin dark:text-white text-black"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            role="status"
+            aria-label="loading"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
           Loading comments...
-    </div>
+        </div>
       {:else if commentsResult && commentsResult.data}
         {#each commentsResult.data as comment (comment.id)}
           <Comment {comment} firstFloor={true} />

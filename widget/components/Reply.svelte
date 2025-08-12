@@ -24,7 +24,7 @@
   const api = getContext('api')
   const setMessage = getContext('setMessage')
   const { appId, pageId, pageUrl, pageTitle } = getContext('attrs')
-  const refresh = getContext('refresh')
+  const addCommentOptimistically = getContext('addCommentOptimistically')
 
   async function addComment() {
     if (!content) {
@@ -62,13 +62,20 @@
         renderedAt,
         submittedAt,
       })
-      // If the API indicates auto-approval, refresh to show the new comment immediately
-      const isAutoApproved = (res && res.data && typeof res.data.isAutoApproved === 'boolean') ? res.data.isAutoApproved : false
-      if (isAutoApproved && typeof refresh === 'function') {
-        await refresh()
+      // If the comment was approved, add it optimistically instead of refetching
+      const comment = res.data.data
+      const isApproved = comment && comment.approved === true
+      console.log('API returned comment:', comment)
+
+      if (isApproved && typeof addCommentOptimistically === 'function') {
+        addCommentOptimistically(comment, parentId)
+        teardown()
+        setMessage(t('comment_has_been_sent'))
+      } else {
+        // For non-approved comments, keep existing behavior
+        teardown()
+        setMessage(t('comment_has_been_sent'))
       }
-      teardown()
-      setMessage(t('comment_has_been_sent'))
     } finally {
       loading = false
     }
@@ -85,7 +92,11 @@
 <form class="space-y-6" on:submit|preventDefault={addComment}>
   <div class="sm:grid sm:grid-cols-2 gap-6 sm:gap-12">
     <div>
-      <label for="nickname" class="py-2 block text-sm font-medium text-gray-700 prose dark:text-white dark:prose-invert">{t('nickname')}</label>
+      <label
+        for="nickname"
+        class="py-2 block text-sm font-medium text-gray-700 prose dark:text-white dark:prose-invert"
+        >{t('nickname')}</label
+      >
       <div class="mt-1">
         <input
           id="nickname"
@@ -100,8 +111,12 @@
       </div>
     </div>
 
-    <div >
-      <label for="email" class="py-2 block text-sm font-medium text-gray-700 dark:text-white">{t('email')}</label>
+    <div>
+      <label
+        for="email"
+        class="py-2 block text-sm font-medium text-gray-700 dark:text-white"
+        >{t('email')}</label
+      >
       <div class="mt-1">
         <input
           id="email"
@@ -117,7 +132,11 @@
     </div>
   </div>
   <div>
-    <label for="reply_content" class="py-2 block text-sm font-medium text-gray-700 dark:text-white">{t('reply_placeholder')}</label>
+    <label
+      for="reply_content"
+      class="py-2 block text-sm font-medium text-gray-700 dark:text-white"
+      >{t('reply_placeholder')}</label
+    >
     <div class="mt-1">
       <textarea
         id="reply_content"
@@ -171,8 +190,9 @@
   </div>
 
   <div class="flex flex-col sm:flex-row gap-4">
-
-    <div class="order-1 sm:order-2 justify-center mt-2 flex items-start space-x-2">
+    <div
+      class="order-1 sm:order-2 justify-center mt-2 flex items-start space-x-2"
+    >
       <input
         id="acceptNotify"
         name="acceptNotify"
@@ -182,7 +202,8 @@
         aria-describedby="acceptNotify_help"
       />
       <label for="acceptNotify" class="text-sm text-gray-700 dark:text-white">
-        {t('receive_email_notification_of_replies') || 'Email me when someone replies to my comment'}
+        {t('receive_email_notification_of_replies') ||
+          'Email me when someone replies to my comment'}
       </label>
     </div>
     <button
