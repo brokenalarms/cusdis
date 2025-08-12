@@ -7,6 +7,10 @@ import { ProjectService } from '../../../service/project.service'
 import { statService } from '../../../service/stat.service'
 import { apiHandler } from '../../../utils.server'
 import { prisma } from '../../../utils.server'
+import { EmailService } from '../../../service/email.service'
+import { TokenService } from '../../../service/token.service'
+import { resolvedConfig } from '../../../utils.server'
+import { makeReplyNotificationEmailTemplate } from '../../../templates/new_comment'
 
 export default apiHandler()
   .use(
@@ -206,6 +210,42 @@ export default apiHandler()
       isAutoApproved = comment && comment.approved === true
     } catch (e) {
       console.warn('auto-approve update failed', e)
+    }
+
+    // If this is a reply that became approved immediately, notify the parent commenter (if opted in)
+    if (isAutoApproved && body.parentId) {
+      try {
+        const parent = await prisma.comment.findUnique({
+          where: { id: body.parentId },
+          select: {
+            by_email: true,
+            notifyConfirmedAt: true,
+          },
+        })
+        if (parent?.by_email && parent.notifyConfirmedAt) {
+          // Avoid emailing the same person about their own reply
+          if (!body.email || parent.by_email !== body.email) {
+            const emailService = new EmailService()
+            const tokenService = new TokenService()
+            const unsubToken = tokenService.genAcceptNotifyToken({ commentId: body.parentId })
+            const unsubscribeLink = `${resolvedConfig.host}/api/open/confirm_reply_notification?token=${unsubToken}&unsubscribe=1`
+            const viewLink = body.pageUrl || `${resolvedConfig.host}`
+            await emailService.send({
+              to: parent.by_email,
+              subject: `New reply on "${body.pageTitle || body.pageId}"`,
+              html: makeReplyNotificationEmailTemplate({
+                page_slug: body.pageTitle || body.pageId,
+                content: body.content,
+                by_nickname: body.nickname,
+                view_link: viewLink,
+                unsubscribe_link: unsubscribeLink,
+              }),
+            })
+          }
+        }
+      } catch (e) {
+        console.warn('[comments] reply notification failed', e)
+      }
     }
 
     // If this commenter isn't auto-approved yet, or they have verified their email, send a one-time email verification

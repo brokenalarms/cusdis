@@ -158,6 +158,9 @@ model Comment {
   by_nickname String
   content     String
 
+  notifyConfirmedAt DateTime? @map("notify_confirmed_at")
+
+
   approved Boolean @default(false)
 
   parentId String?

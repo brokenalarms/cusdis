@@ -5,7 +5,28 @@ export function makeNewCommentEmailTemplate(data: {
   unsubscribe_link: string
   approve_link: string
   notification_preferences_link: string
+  isAdmin?: boolean
 }) {
+  const unsubBlock = data.isAdmin ? '' : `
+  <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="47bae5ca-2fa9-4d97-822f-200c585eea52" data-mc-module-version="2019-10-22">
+    <tbody>
+      <tr>
+        <td style="padding:4px 0px 4px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content">
+          <div>
+            <div style="font-family: inherit; text-align: inherit">
+              <a href="{{unsubscribe_link}}"><span style="font-size: 10px">Unsubscribe</span></a>
+              <span style="font-size: 10px"> if you don't want to receive new comment notification.</span>
+            </div>
+            <div style="font-family: inherit; text-align: inherit">
+              <a href="{{notification_preferences_link}}"><span style="font-size: 10px">Notification preferences</span></a>
+            </div>
+            <div></div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>`
+
   let tmp = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
     <head>
@@ -230,21 +251,7 @@ export function makeNewCommentEmailTemplate(data: {
         <td style="padding:4px 0px 4px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: inherit"><span style="font-size: 10px">Thanks for using </span><a href="https://cusdis.com"><span style="font-size: 10px">Cusdis</span></a><span style="font-size: 10px">.</span></div><div></div></div></td>
       </tr>
     </tbody>
-  </table><table class="module" role="module" data-type="spacer" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="8cf75138-7baa-421b-93d4-ccc3c7f324dd">
-    <tbody>
-      <tr>
-        <td style="padding:0px 0px 30px 0px;" role="module-content" bgcolor="">
-        </td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="47bae5ca-2fa9-4d97-822f-200c585eea52" data-mc-module-version="2019-10-22">
-    <tbody>
-      <tr>
-        <td style="padding:4px 0px 4px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: inherit"><a href="{{unsubscribe_link}}"><span style="font-size: 10px">Unsubscribe</span></a><span style="font-size: 10px"> if you don't want to receive new comment notification.</span></div>
-<div style="font-family: inherit; text-align: inherit"><a href="{{notification_preferences_link}}"><span style="font-size: 10px">Notification preferences</span></a></div><div></div></div></td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="spacer" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="6a647f02-d41f-4976-94b0-abeb239d8b88">
+  </table>${unsubBlock}<table class="module" role="module" data-type="spacer" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="6a647f02-d41f-4976-94b0-abeb239d8b88">
     <tbody>
       <tr>
         <td style="padding:0px 0px 30px 0px;" role="module-content" bgcolor="">
@@ -290,6 +297,92 @@ export function makeNewCommentEmailTemplate(data: {
 
   Object.keys(data).forEach((key) => {
     const value = data[key]
+    tmp = tmp.replace(`{{${key}}}`, value)
+  })
+  return tmp
+}
+
+export function makeReplyNotificationEmailTemplate(data: {
+  page_slug: string
+  content: string
+  by_nickname: string
+  view_link: string
+  unsubscribe_link: string
+}) {
+  let tmp = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <style type="text/css">
+      body, p, div { font-family: arial,helvetica,sans-serif; font-size: 14px; }
+      body { color: #000000; }
+      a { color: #1188E6; text-decoration: none; }
+      p { margin: 0; padding: 0; }
+      table.wrapper { width:100% !important; table-layout: fixed; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; -moz-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+      img.max-width { max-width: 100% !important; }
+      @media screen and (max-width:480px) { .columns, .column { width: 100% !important; display: block !important; } }
+    </style>
+  </head>
+  <body>
+    <center class="wrapper" data-link-color="#1188E6" data-body-style="font-size:14px; font-family:arial,helvetica,sans-serif; color:#000000; background-color:#FFFFFF;">
+      <div class="webkit">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" class="wrapper" bgcolor="#FFFFFF">
+          <tr><td valign="top" bgcolor="#FFFFFF" width="100%">
+            <table width="100%" role="content-container" class="outer" align="center" cellpadding="0" cellspacing="0" border="0">
+              <tr><td width="100%">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td>
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px;" align="center">
+                    <tr><td role="modules-container" style="padding:0; color:#000000; text-align:left;" bgcolor="#FFFFFF" width="100%" align="left">
+                      <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                        <tbody><tr><td style="padding:18px 0; line-height:22px;" valign="top">
+                          <div><span style="font-size: 18px"><strong>Cusdis</strong></span></div>
+                        </td></tr></tbody>
+                      </table>
+                      <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                        <tbody><tr><td style="padding:18px 0; line-height:22px;" valign="top">
+                          <div><span style="font-size: 22px"><strong>New reply on "{{page_slug}}"</strong></span></div>
+                        </td></tr></tbody>
+                      </table>
+                      <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                        <tbody><tr><td style="padding:12px 0; line-height:22px;" valign="top">
+                          <div><em>{{by_nickname}}</em> replied:</div>
+                        </td></tr></tbody>
+                      </table>
+                      <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                        <tbody><tr><td style="padding:12px 0; line-height:22px;" valign="top">
+                          <div>{{content}}</div>
+                        </td></tr></tbody>
+                      </table>
+                      <table border="0" cellpadding="0" cellspacing="0" class="module" data-role="module-button" data-type="button" role="module" style="table-layout:fixed;" width="100%">
+                        <tbody><tr><td align="left" class="outer-td" style="padding:12px 0;">
+                          <table border="0" cellpadding="0" cellspacing="0" class="wrapper-mobile" style="text-align:center;"><tbody><tr>
+                            <td align="center" bgcolor="#333333" class="inner-td" style="border-radius:6px; font-size:16px; text-align:left;">
+                              <a href="{{view_link}}" style="background-color:#333333; border:1px solid #333333; border-radius:6px; color:#ffffff; display:inline-block; font-size:14px; padding:12px 18px; text-align:center; text-decoration:none;" target="_blank">View reply</a>
+                            </td>
+                          </tr></tbody></table>
+                        </td></tr></tbody>
+                      </table>
+                      <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+                        <tbody><tr><td style="padding:18px 0; line-height:22px;" valign="top">
+                          <div style="font-size:12px;color:#666">Don’t want these emails? <a href="{{unsubscribe_link}}" target="_blank">Unsubscribe</a>.</div>
+                        </td></tr></tbody>
+                      </table>
+                    </td></tr>
+                  </table>
+                </td></tr></table>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </div>
+    </center>
+  </body>
+</html>`
+
+  Object.keys(data).forEach((key) => {
+    const value = (data as any)[key]
     tmp = tmp.replace(`{{${key}}}`, value)
   })
   return tmp

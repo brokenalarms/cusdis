@@ -182,8 +182,8 @@ export function makeConfirmReplyNotificationTemplate(data: {
 <div style="font-family: inherit; text-align: inherit"><br></div>
 <div style="font-family: inherit; text-align: inherit">We only send email when you have new reply. You can unsubscribe anytime through an unsubscribe link on the notification email.</div><div></div></div></td>
       </tr>
-    </tbody>
-  </table></td>
+      </table></td>
+      </tbody>
                                       </tr>
                                     </table>
                                     <!--[if mso]>
