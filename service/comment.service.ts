@@ -39,6 +39,20 @@ export class CommentService extends RequestScopeService {
   emailService = new EmailService()
   tokenService = new TokenService()
 
+  private formatComment(comment: Comment & Partial<{ replies: Comment[] }>, timezoneOffset: number = 0): CommentItem {
+    const parsedCreatedAt = dayjs
+      .utc(comment.createdAt)
+      .utcOffset(timezoneOffset)
+      .format('YYYY-MM-DD HH:mm')
+    const parsedContent = markdown.render(comment.content) as string
+    return {
+      ...comment,
+      parsedContent,
+      parsedCreatedAt,
+      replies: comment.replies || { data: [], commentCount: 0, pageSize: 0, pageCount: 0 }
+    } as CommentItem
+  }
+
   async getComments(
     projectId: string,
     timezoneOffset: number,
@@ -120,17 +134,11 @@ export class CommentService extends RequestScopeService {
           select,
         })
 
-        const parsedCreatedAt = dayjs
-          .utc(comment.createdAt)
-          .utcOffset(timezoneOffset)
-          .format('YYYY-MM-DD HH:mm')
-        const parsedContent = markdown.render(comment.content) as string
+        const formatted = this.formatComment(comment, timezoneOffset)
         return {
-          ...comment,
+          ...formatted,
           replies,
-          parsedContent,
-          parsedCreatedAt,
-        } as CommentItem
+        }
       }),
     )
 
@@ -231,7 +239,8 @@ export class CommentService extends RequestScopeService {
     // Trigger hooks with final state
     await this.hookService.addComment(finalComment, projectId)
 
-    return finalComment
+    // Return formatted comment that matches CommentItem structure
+    return this.formatComment(finalComment, 0)
   }
 
   async addCommentAsModerator(
@@ -265,10 +274,11 @@ export class CommentService extends RequestScopeService {
       },
     })
 
-    // Trigger reply notifications for moderastor replies (since they're pre-approved)
+    // Trigger reply notifications for moderator replies (since they're pre-approved)
     await this.hookService.notificationService.sendReplyNotifications(created.id, parentId)
 
-    return created
+    // Return formatted comment that matches CommentItem structure
+    return this.formatComment(created, 0)
   }
 
   async approve(commentId: string) {
