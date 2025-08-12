@@ -25,7 +25,7 @@ declare module "next-auth/jwt" {
 export default NextAuth({
   // Configure one or more authentication providers
   providers: authProviders,
-
+  secret: process.env.NEXTAUTH_SECRET || resolvedConfig.jwtSecret,
   adapter: Adapters.Prisma.Adapter({ prisma: prisma }),
 
   session: {
