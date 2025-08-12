@@ -1,4 +1,4 @@
-import { Comment, Page, Project } from "@prisma/client";
+import { Comment } from "@prisma/client";
 import { RequestScopeService } from ".";
 import { NotificationService } from "./notification.service";
 import { WebhookService } from "./webhook.service";
@@ -11,5 +11,9 @@ export class HookService extends RequestScopeService {
   async addComment(comment: Comment, projectId: string) {
     this.notificationService.addComment(comment, projectId)
     this.webhookService.addComment(comment, projectId)
+  }
+
+  async approveComment(commentId: string, parentId?: string) {
+    await this.notificationService.sendReplyNotifications(commentId, parentId)
   }
 }

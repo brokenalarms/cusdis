@@ -1,11 +1,11 @@
 import { Comment } from '@prisma/client'
 import { RequestScopeService } from '.'
-import { getSession, prisma, resolvedConfig } from '../utils.server'
-import { UserService } from './user.service'
+import { makeNewCommentEmailTemplate, makeReplyNotificationEmailTemplate } from '../templates/new_comment'
+import { prisma, resolvedConfig } from '../utils.server'
 import { markdown } from './comment.service'
-import { TokenService } from './token.service'
 import { EmailService } from './email.service'
-import { makeNewCommentEmailTemplate } from '../templates/new_comment'
+import { TokenService } from './token.service'
+import { UserService } from './user.service'
 
 export class NotificationService extends RequestScopeService {
   userService = new UserService(this.req)
@@ -86,6 +86,65 @@ export class NotificationService extends RequestScopeService {
       }
 
       await this.emailService.send(msg)
+    }
+  }
+
+  async sendReplyNotifications(commentId: string, parentId?: string) {
+    try {
+      if (!parentId) {
+        return
+      }
+
+      const comment = await prisma.comment.findUnique({
+        where: { id: commentId },
+        select: {
+          by_email: true,
+          by_nickname: true,
+          content: true,
+          approved: true,
+          page: {
+            select: {
+              slug: true,
+              title: true,
+              url: true,
+            },
+          },
+        },
+      })
+
+      if (!comment?.approved) {
+        return
+      }
+
+      const parent = await prisma.comment.findUnique({
+        where: { id: parentId },
+        select: {
+          by_email: true,
+          notifyConfirmedAt: true,
+        },
+      })
+
+      if (parent?.by_email && parent.notifyConfirmedAt) {
+        if (!comment.by_email || parent.by_email !== comment.by_email) {
+          const unsubToken = this.tokenService.genAcceptNotifyToken(parentId)
+          const unsubscribeLink = `${resolvedConfig.host}/api/open/confirm_reply_notification?token=${encodeURIComponent(unsubToken)}&unsubscribe=1`
+          const viewLink = comment.page.url || `${resolvedConfig.host}`
+          
+          await this.emailService.send({
+            to: parent.by_email,
+            subject: `New reply on "${comment.page.title || comment.page.slug}"`,
+            html: makeReplyNotificationEmailTemplate({
+              page_slug: comment.page.title || comment.page.slug,
+              content: comment.content,
+              by_nickname: comment.by_nickname,
+              view_link: viewLink,
+              unsubscribe_link: unsubscribeLink,
+            }),
+          })
+        }
+      }
+    } catch (e) {
+      console.warn('[notification.service] reply notification failed', e)
     }
   }
 }

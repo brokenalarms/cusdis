@@ -232,6 +232,11 @@ export class CommentService extends RequestScopeService {
   }
 
   async approve(commentId: string) {
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { parentId: true },
+    })
+
     await prisma.comment.update({
       where: {
         id: commentId,
@@ -241,6 +246,7 @@ export class CommentService extends RequestScopeService {
       },
     })
 
+    await this.hookService.approveComment(commentId, comment?.parentId)
     statService.capture('comment_approve')
   }
 
