@@ -38,6 +38,11 @@ export class NotificationService extends RequestScopeService {
       },
     })
 
+    if (!project) {
+      console.log('[NotificationService] Skip admin notification - project not found', { projectId })
+      return
+    }
+
     // don't notify if disable in project settings
     if (!project.enableNotification) {
       console.log('[NotificationService] Skip admin notification - project notifications disabled', { projectId })
