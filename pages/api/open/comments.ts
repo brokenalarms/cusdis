@@ -227,8 +227,8 @@ export default apiHandler()
           if (!body.email || parent.by_email !== body.email) {
             const emailService = new EmailService()
             const tokenService = new TokenService()
-            const unsubToken = tokenService.genAcceptNotifyToken({ commentId: body.parentId })
-            const unsubscribeLink = `${resolvedConfig.host}/api/open/confirm_reply_notification?token=${unsubToken}&unsubscribe=1`
+            const unsubToken = tokenService.genAcceptNotifyToken(body.parentId)
+            const unsubscribeLink = `${resolvedConfig.host}/api/open/confirm_reply_notification?token=${encodeURIComponent(unsubToken)}&unsubscribe=1`
             const viewLink = body.pageUrl || `${resolvedConfig.host}`
             await emailService.send({
               to: parent.by_email,
