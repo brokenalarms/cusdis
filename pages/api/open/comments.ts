@@ -148,13 +148,10 @@ export default apiHandler()
       return
     }
 
-    // Determine if this email should be auto-approved
-    let shouldAutoApprove = false
+    // Check if user has verified email for email verification logic
     let hasVerifiedEmail = false
     try {
       if (body.email) {
-        // If the email belongs to a verified user
-        // AND has a previously admin-approved comment in this project
         const verifiedUser = await prisma.user.findFirst({
           where: {
             email: body.email,
@@ -162,23 +159,10 @@ export default apiHandler()
           },
           select: { id: true },
         })
-
-        const priorApproved = await prisma.comment.findFirst({
-          where: {
-            page: {
-              projectId: body.appId, // This is the Project.id
-            },
-            by_email: body.email,
-            approved: true,
-          },
-          select: { id: true },
-        })
         hasVerifiedEmail = Boolean(verifiedUser)
-        shouldAutoApprove = Boolean(verifiedUser && priorApproved)
       }
     } catch (e) {
-      // If the allowlist check fails for any reason, fall back to default behavior
-      console.warn('allowlist check failed', e)
+      console.warn('verified email check failed', e)
     }
 
     const comment = await commentService.addComment(
@@ -194,19 +178,8 @@ export default apiHandler()
       body.parentId,
     )
 
-    let isAutoApproved = false
-    try {
-      if (shouldAutoApprove && comment && comment.approved !== true) {
-        await prisma.comment.update({
-          where: { id: comment.id },
-          data: { approved: true },
-        })
-        comment.approved = true
-      }
-      isAutoApproved = comment && comment.approved === true
-    } catch (e) {
-      console.warn('auto-approve update failed', e)
-    }
+    // CommentService now handles auto-approval logic
+    const isAutoApproved = comment && comment.approved === true
 
     // If this is a reply that became approved immediately, notify the parent commenter (if opted in)
     if (isAutoApproved && body.parentId) {

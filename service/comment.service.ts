@@ -220,18 +220,18 @@ export class CommentService extends RequestScopeService {
     }
 
     // Apply auto-approval if conditions met
+    let finalComment = created
     if (shouldAutoApprove) {
-      await prisma.comment.update({
+      finalComment = await prisma.comment.update({
         where: { id: created.id },
         data: { approved: true },
       })
-      created.approved = true
     }
 
     // Trigger hooks with final state
-    await this.hookService.addComment(created, projectId)
+    await this.hookService.addComment(finalComment, projectId)
 
-    return created
+    return finalComment
   }
 
   async addCommentAsModerator(
@@ -265,7 +265,7 @@ export class CommentService extends RequestScopeService {
       },
     })
 
-    // Trigger reply notifications for moderator replies (since they're pre-approved)
+    // Trigger reply notifications for moderastor replies (since they're pre-approved)
     await this.hookService.notificationService.sendReplyNotifications(created.id, parentId)
 
     return created
