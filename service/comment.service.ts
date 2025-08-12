@@ -234,7 +234,7 @@ export class CommentService extends RequestScopeService {
   async approve(commentId: string) {
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
-      select: { parentId: true },
+      select: { parentId: true, by_email: true },
     })
 
     await prisma.comment.update({
@@ -245,6 +245,15 @@ export class CommentService extends RequestScopeService {
         approved: true,
       },
     })
+
+    // Admin approval also verifies the email (upsert handles case where User record doesn't exist yet)
+    if (comment?.by_email) {
+      await prisma.user.upsert({
+        where: { email: comment.by_email },
+        update: { emailVerified: new Date() },
+        create: { email: comment.by_email, emailVerified: new Date() },
+      })
+    }
 
     await this.hookService.approveComment(commentId, comment?.parentId)
     statService.capture('comment_approve')

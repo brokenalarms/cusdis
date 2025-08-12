@@ -2,11 +2,35 @@ export function makeNewCommentEmailTemplate(data: {
   page_slug: string
   content: string
   by_nickname: string
+  by_email?: string
   unsubscribe_link: string
   approve_link: string
   notification_preferences_link: string
   isAdmin?: boolean
+  email_verified?: boolean
+  auto_approved?: boolean
+  is_first_comment?: boolean
 }) {
+  // Generate dynamic status header for admin
+  let statusHeader = `${data.by_nickname} comments in page "${data.page_slug}"`
+  if (data.by_email) {
+    statusHeader += ` (${data.by_email})`
+  }
+  
+  if (data.auto_approved) {
+    if (data.email_verified) {
+      statusHeader += ` - AUTO-APPROVED (verified email${data.is_first_comment ? '' : ' + returning user'})`
+    } else {
+      statusHeader += ` - AUTO-APPROVED (email verification)`
+    }
+  } else {
+    if (data.is_first_comment) {
+      statusHeader += ` - FIRST-TIME COMMENTER (${data.email_verified ? 'verified' : 'unverified'} email)`
+    } else {
+      statusHeader += ` - NEEDS APPROVAL (${data.email_verified ? 'verified' : 'unverified'} email)`
+    }
+  }
+
   const unsubBlock = data.isAdmin ? '' : `
   <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="47bae5ca-2fa9-4d97-822f-200c585eea52" data-mc-module-version="2019-10-22">
     <tbody>
@@ -178,7 +202,7 @@ export function makeNewCommentEmailTemplate(data: {
   </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="52e3ced4-77a7-44c5-8b24-464c80574b80" data-mc-module-version="2019-10-22">
     <tbody>
       <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: inherit">{{by_nickname}} comments in page "{{page_slug}}"</div><div></div></div></td>
+        <td style="padding:18px 0px 18px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: inherit">{{status_header}}</div><div></div></div></td>
       </tr>
     </tbody>
   </table><table class="module" role="module" data-type="spacer" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="d95c7472-e3dc-4a9b-845a-b1b746f06254">
@@ -295,8 +319,11 @@ export function makeNewCommentEmailTemplate(data: {
     </body>
   </html>`
 
-  Object.keys(data).forEach((key) => {
-    const value = data[key]
+  // Add status_header to data for replacement
+  const dataWithStatus = { ...data, status_header: statusHeader }
+  
+  Object.keys(dataWithStatus).forEach((key) => {
+    const value = dataWithStatus[key]
     tmp = tmp.replace(`{{${key}}}`, value)
   })
   return tmp

@@ -273,7 +273,7 @@ export function makeEmailVerificationTemplate(data: {
                           <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
                             <tbody><tr>
                               <td style="padding:18px 0; line-height:22px;" valign="top">
-                                <div>You received this because you used this address when commenting on "{{page_slug}}", and haven't posted before on {{base_url}}. Confirming helps us prevent spam and lets you receive reply notifications.</div>
+                                <div>You received this because you used this address when commenting on "{{page_slug}}", and haven't posted before on {{page_url}}. Confirming helps us prevent spam and lets you receive reply notifications.</div>
                               </td>
                             </tr></tbody>
                           </table>

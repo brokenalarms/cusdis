@@ -75,14 +75,7 @@ export class NotificationService extends RequestScopeService {
         to: notificationEmail, // Change to your recipient
         from: this.emailService.sender,
         subject: `New comment on "${fullComment.page.project.title}"`,
-        html: makeNewCommentEmailTemplate({
-          page_slug: fullComment.page.title || fullComment.page.slug,
-          by_nickname: comment.by_nickname,
-          approve_link: `${resolvedConfig.host}/open/approve?token=${approveToken}`,
-          unsubscribe_link: `${resolvedConfig.host}/api/open/unsubscribe?token=${unsubscribeToken}`,
-          content: markdown.render(comment.content),
-          notification_preferences_link: `${resolvedConfig.host}/user`,
-        }),
+        html: await this.buildAdminNotificationTemplate(comment, fullComment, approveToken, unsubscribeToken),
       }
 
       await this.emailService.send(msg)
@@ -146,5 +139,44 @@ export class NotificationService extends RequestScopeService {
     } catch (e) {
       console.warn('[notification.service] reply notification failed', e)
     }
+  }
+
+  private async buildAdminNotificationTemplate(comment: any, fullComment: any, approveToken: string, unsubscribeToken: string) {
+    // Check if user has verified email
+    let emailVerified = false
+    let isFirstComment = true
+    
+    if (comment.by_email) {
+      const user = await prisma.user.findUnique({
+        where: { email: comment.by_email },
+        select: { emailVerified: true },
+      })
+      emailVerified = Boolean(user?.emailVerified)
+
+      // Check if they have any prior approved comments
+      const priorApproved = await prisma.comment.findFirst({
+        where: {
+          page: { projectId: fullComment.page.project.id || fullComment.page.projectId },
+          by_email: comment.by_email,
+          approved: true,
+          id: { not: comment.id }, // Exclude current comment
+        },
+        select: { id: true },
+      })
+      isFirstComment = !priorApproved
+    }
+
+    return makeNewCommentEmailTemplate({
+      page_slug: fullComment.page.title || fullComment.page.slug,
+      by_nickname: comment.by_nickname,
+      by_email: comment.by_email,
+      approve_link: `${resolvedConfig.host}/open/approve?token=${approveToken}`,
+      unsubscribe_link: `${resolvedConfig.host}/api/open/unsubscribe?token=${unsubscribeToken}`,
+      content: markdown.render(comment.content),
+      notification_preferences_link: `${resolvedConfig.host}/user`,
+      email_verified: emailVerified,
+      auto_approved: comment.approved,
+      is_first_comment: isFirstComment,
+    })
   }
 }
