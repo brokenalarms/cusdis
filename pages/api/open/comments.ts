@@ -6,9 +6,7 @@ import {
 import { ProjectService } from '../../../service/project.service'
 import { statService } from '../../../service/stat.service'
 import { apiHandler } from '../../../utils.server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '../../../utils.server'
 
 export default apiHandler()
   .use(
@@ -212,31 +210,37 @@ export default apiHandler()
 
     // If this commenter isn't auto-approved yet, or they have verified their email, send a one-time email verification
     if (!isAutoApproved && body.email && !hasVerifiedEmail) {
-      try {
-        // Prefer pageTitle for user-facing text; fall back to pageId
-        const pageLabel = body.pageTitle || body.pageId
-        await commentService.sendEmailVerification(
-          body.email,
-          pageLabel,
-          body.appId,
-          comment.id,
-        )
-      } catch (e) {
-        console.warn('email verification send failed', e)
-      }
+      const pageLabel = body.pageTitle || body.pageId
+      console.log('[comments] sending verify email', {
+        email: body.email,
+        isAutoApproved,
+        hasVerifiedEmail,
+        appId: body.appId,
+        commentId: comment.id,
+        pageLabel,
+      })
+      commentService.sendEmailVerification(
+        body.email,
+        pageLabel,
+        body.appId,
+        comment.id,
+      ).then(() => {
+        console.log('[comments] verify email queued OK', { email: body.email, commentId: comment.id })
+      }).catch((e) => {
+        console.warn('[comments] verify email failed', e)
+      })
+    } else {
+      console.log('[comments] skip verify email', { isAutoApproved, hasVerifiedEmail, hasEmail: Boolean(body.email) })
     }
 
     // send confirm email
     if (body.acceptNotify === true && body.email) {
-      try {
-        commentService.sendConfirmReplyNotificationEmail(
-          body.email,
-          body.pageTitle,
-          comment.id,
-        )
-      } catch (e) {
-        console.log(e)
-      }
+      console.log('[comments] sending confirm-reply email', { email: body.email, commentId: comment.id })
+      commentService.sendConfirmReplyNotificationEmail(
+        body.email,
+        body.pageTitle,
+        comment.id,
+      )
     }
 
     statService.capture('add_comment')
