@@ -77,7 +77,9 @@ export class CommentService extends RequestScopeService {
             equals: null,
           },
           ownerId: options?.onlyOwn
-            ? await (await this.getSession()).uid
+            ? await (
+                await this.getSession()
+              ).uid
             : undefined,
         },
       },
@@ -118,9 +120,10 @@ export class CommentService extends RequestScopeService {
           select,
         })
 
-        const parsedCreatedAt = dayjs.utc(comment.createdAt).utcOffset(timezoneOffset).format(
-          'YYYY-MM-DD HH:mm',
-        )
+        const parsedCreatedAt = dayjs
+          .utc(comment.createdAt)
+          .utcOffset(timezoneOffset)
+          .format('YYYY-MM-DD HH:mm')
         const parsedContent = markdown.render(comment.content) as string
         return {
           ...comment,
@@ -194,13 +197,19 @@ export class CommentService extends RequestScopeService {
     return created
   }
 
-  async addCommentAsModerator(parentId: string, content: string, options?: {
-    owner?: User
-  }) {
-    const session = options?.owner ? {
-      user: options.owner,
-      uid: options.owner.id
-    } : await this.getSession()
+  async addCommentAsModerator(
+    parentId: string,
+    content: string,
+    options?: {
+      owner?: User
+    },
+  ) {
+    const session = options?.owner
+      ? {
+          user: options.owner,
+          uid: options.owner.id,
+        }
+      : await this.getSession()
     const parent = await prisma.comment.findUnique({
       where: {
         id: parentId,
@@ -250,6 +259,7 @@ export class CommentService extends RequestScopeService {
     to: string,
     pageSlug: string,
     commentId: string,
+    pageUrl: string,
   ) {
     const confirmToken = this.tokenService.genAcceptNotifyToken(commentId)
     const confirmLink = `${resolvedConfig.host}/api/open/confirm_reply_notification?token=${confirmToken}`
@@ -260,6 +270,7 @@ export class CommentService extends RequestScopeService {
       html: makeConfirmReplyNotificationTemplate({
         page_slug: pageSlug,
         confirm_url: confirmLink,
+        page_url: pageUrl
       }),
     })
     statService.capture('send_reply_confirm_email')

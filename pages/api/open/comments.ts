@@ -232,6 +232,7 @@ export default apiHandler()
           body.email,
           body.pageTitle,
           comment.id,
+          body.pageUrl,
         )
       } catch (e) {
         console.warn('[comments] confirm-reply email failed', e)

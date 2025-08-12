@@ -1,7 +1,10 @@
 export function makeConfirmReplyNotificationTemplate(data: {
   confirm_url: string
   page_slug: string
+  page_url: string
 }) {
+  data.page_url = data.page_url.split('/')[2]
+
   let tmp = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
     <head>
@@ -270,7 +273,7 @@ export function makeEmailVerificationTemplate(data: {
                           <table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
                             <tbody><tr>
                               <td style="padding:18px 0; line-height:22px;" valign="top">
-                                <div>You received this because you used this address when commenting on {{page_slug}}. Confirming helps us prevent spam and lets you receive reply notifications.</div>
+                                <div>You received this because you used this address when commenting on "{{page_slug}}", and haven't posted before on {{base_url}}. Confirming helps us prevent spam and lets you receive reply notifications.</div>
                               </td>
                             </tr></tbody>
                           </table>
