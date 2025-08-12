@@ -1,6 +1,9 @@
 import { Comment } from '@prisma/client'
 import { RequestScopeService } from '.'
-import { makeNewCommentEmailTemplate, makeReplyNotificationEmailTemplate } from '../templates/new_comment'
+import {
+  makeNewCommentEmailTemplate,
+  makeReplyNotificationEmailTemplate,
+} from '../templates/new_comment'
 import { prisma, resolvedConfig } from '../utils.server'
 import { markdown } from './comment.service'
 import { EmailService } from './email.service'
@@ -16,7 +19,10 @@ export class NotificationService extends RequestScopeService {
   async addComment(comment: Comment, projectId: string) {
     // don't notify if comment is created by moderator
     if (comment.moderatorId) {
-      console.log('[NotificationService] Skip admin notification - moderator comment', { commentId: comment.id })
+      console.log(
+        '[NotificationService] Skip admin notification - moderator comment',
+        { commentId: comment.id },
+      )
       return
     }
 
@@ -39,13 +45,19 @@ export class NotificationService extends RequestScopeService {
     })
 
     if (!project) {
-      console.log('[NotificationService] Skip admin notification - project not found', { projectId })
+      console.log(
+        '[NotificationService] Skip admin notification - project not found',
+        { projectId },
+      )
       return
     }
 
     // don't notify if disable in project settings
     if (!project.enableNotification) {
-      console.log('[NotificationService] Skip admin notification - project notifications disabled', { projectId })
+      console.log(
+        '[NotificationService] Skip admin notification - project notifications disabled',
+        { projectId },
+      )
       return
     }
 
@@ -72,10 +84,10 @@ export class NotificationService extends RequestScopeService {
       project.owner.notificationEmail || project.owner.email
 
     if (project.owner.enableNewCommentNotification) {
-      console.log('[NotificationService] Sending admin notification', { 
-        commentId: comment.id, 
+      console.log('[NotificationService] Sending admin notification', {
+        commentId: comment.id,
         to: notificationEmail,
-        approved: comment.approved 
+        approved: comment.approved,
       })
 
       let unsubscribeToken = this.tokenService.genUnsubscribeNewCommentToken(
@@ -88,15 +100,24 @@ export class NotificationService extends RequestScopeService {
         to: notificationEmail, // Change to your recipient
         from: this.emailService.sender,
         subject: `New comment on "${fullComment.page.project.title}"`,
-        html: await this.buildAdminNotificationTemplate(comment, fullComment, approveToken, unsubscribeToken),
+        html: await this.buildAdminNotificationTemplate(
+          comment,
+          fullComment,
+          approveToken,
+          unsubscribeToken,
+        ),
       }
 
       await this.emailService.send(msg)
     } else {
-      console.log('[NotificationService] Skip admin notification - user preference disabled', { 
-        projectId, 
-        enableNewCommentNotification: project.owner.enableNewCommentNotification 
-      })
+      console.log(
+        '[NotificationService] Skip admin notification - user preference disabled',
+        {
+          projectId,
+          enableNewCommentNotification:
+            project.owner.enableNewCommentNotification,
+        },
+      )
     }
   }
 
@@ -127,23 +148,41 @@ export class NotificationService extends RequestScopeService {
         return
       }
 
-      const parent = await prisma.comment.findUnique({
-        where: { id: parentId },
-        select: {
-          by_email: true,
-          notifyConfirmedAt: true,
-        },
-      })
+      // Get all ancestors in the thread to notify everyone in the conversation
+      const ancestorIds = await this.getAncestorCommentIds(parentId)
+      const notifiedEmails = new Set<string>() // Prevent duplicate emails to same person
 
-      if (parent?.by_email && parent.notifyConfirmedAt) {
-        if (!comment.by_email || parent.by_email !== comment.by_email) {
-          const unsubToken = this.tokenService.genAcceptNotifyToken(parentId)
-          const unsubscribeLink = `${resolvedConfig.host}/api/open/confirm_reply_notification?token=${encodeURIComponent(unsubToken)}&unsubscribe=1`
+      for (const ancestorId of ancestorIds) {
+        const ancestor = await prisma.comment.findUnique({
+          where: { id: ancestorId },
+          select: {
+            by_email: true,
+            notifyConfirmedAt: true,
+          },
+        })
+
+        if (ancestor?.by_email && ancestor.notifyConfirmedAt) {
+          // Skip if already notified this email or if replying to self
+          if (
+            notifiedEmails.has(ancestor.by_email) ||
+            (comment.by_email && ancestor.by_email === comment.by_email)
+          ) {
+            continue
+          }
+
+          const unsubToken = this.tokenService.genAcceptNotifyToken(ancestorId)
+          const unsubscribeLink = `${
+            resolvedConfig.host
+          }/api/open/confirm_reply_notification?token=${encodeURIComponent(
+            unsubToken,
+          )}&unsubscribe=1`
           const viewLink = comment.page.url || `${resolvedConfig.host}`
-          
+
           await this.emailService.send({
-            to: parent.by_email,
-            subject: `New reply on "${comment.page.title || comment.page.slug}"`,
+            to: ancestor.by_email,
+            subject: `New reply on "${
+              comment.page.title || comment.page.slug
+            }"`,
             html: makeReplyNotificationEmailTemplate({
               page_slug: comment.page.title || comment.page.slug,
               content: comment.content,
@@ -152,6 +191,8 @@ export class NotificationService extends RequestScopeService {
               unsubscribe_link: unsubscribeLink,
             }),
           })
+
+          notifiedEmails.add(ancestor.by_email)
         }
       }
     } catch (e) {
@@ -159,11 +200,39 @@ export class NotificationService extends RequestScopeService {
     }
   }
 
-  private async buildAdminNotificationTemplate(comment: any, fullComment: any, approveToken: string, unsubscribeToken: string) {
+  private async getAncestorCommentIds(commentId: string): Promise<string[]> {
+    const ancestors: string[] = []
+    let currentId: string | null = commentId
+
+    // Walk up the parent chain (with safety limit to prevent infinite loops)
+    let depth = 0
+    const maxDepth = 10 // Reasonable limit for comment thread depth
+
+    while (currentId && depth < maxDepth) {
+      ancestors.push(currentId)
+
+      const comment = await prisma.comment.findUnique({
+        where: { id: currentId },
+        select: { parentId: true },
+      })
+
+      currentId = comment?.parentId || null
+      depth++
+    }
+
+    return ancestors
+  }
+
+  private async buildAdminNotificationTemplate(
+    comment: any,
+    fullComment: any,
+    approveToken: string,
+    unsubscribeToken: string,
+  ) {
     // Check if user has verified email
     let emailVerified = false
     let isFirstComment = true
-    
+
     if (comment.by_email) {
       const user = await prisma.user.findUnique({
         where: { email: comment.by_email },
@@ -174,7 +243,10 @@ export class NotificationService extends RequestScopeService {
       // Check if they have any prior approved comments
       const priorApproved = await prisma.comment.findFirst({
         where: {
-          page: { projectId: fullComment.page.project.id || fullComment.page.projectId },
+          page: {
+            projectId:
+              fullComment.page.project.id || fullComment.page.projectId,
+          },
           by_email: comment.by_email,
           approved: true,
           id: { not: comment.id }, // Exclude current comment
