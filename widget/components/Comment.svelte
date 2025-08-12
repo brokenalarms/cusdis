@@ -16,6 +16,9 @@
     <div class="flex items-center">
       <p class="inline-flex items-center mr-3 text-sm text-gray-900 dark:text-white font-semibold">
         {comment.moderator?.displayName ?? comment.by_nickname}
+        {#if comment.moderator}
+          <span class="ml-2 px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded">{t('mod_badge')}</span>
+        {/if}
       </p>
       <p class="text-sm text-gray-600 dark:text-gray-400">
         <time pubdate datetime={comment.parsedCreatedAt}>{comment.parsedCreatedAt}</time>
