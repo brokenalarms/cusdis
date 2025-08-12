@@ -22,18 +22,37 @@ export class EmailService {
   }
 
   async send(msg: { to: string; from: string; subject: string; html: string }) {
+    console.log('[EmailService] Starting to send email', {
+      to: msg.to,
+      from: msg.from,
+      subject: msg.subject,
+    });
     if (this.isSMTPEnable()) {
-      const transporter = nodemailer.createTransport({
-        host: resolvedConfig.smtp.host,
-        port: resolvedConfig.smtp.port,
-        secure: resolvedConfig.smtp.secure,
-        auth: resolvedConfig.smtp.auth,
-      })
-      await transporter.sendMail(msg)
+      console.log('[EmailService] Using SMTP with sender', this.sender);
+      try {
+        const transporter = nodemailer.createTransport({
+          host: resolvedConfig.smtp.host,
+          port: resolvedConfig.smtp.port,
+          secure: resolvedConfig.smtp.secure,
+          auth: resolvedConfig.smtp.auth,
+        });
+        await transporter.sendMail(msg);
+        console.log('[EmailService] SMTP email sent successfully');
+      } catch (error) {
+        console.error('[EmailService] SMTP send error:', error);
+        throw error;
+      }
     } else if (this.isThirdpartyEnable()) {
-      sgMail.setApiKey(resolvedConfig.sendgrid.apiKey)
-      await sgMail.send(msg)
-      statService.capture('notification_email')
+      console.log('[EmailService] Using SendGrid with sender', this.sender);
+      try {
+        sgMail.setApiKey(resolvedConfig.sendgrid.apiKey);
+        await sgMail.send(msg);
+        console.log('[EmailService] SendGrid email sent successfully');
+        statService.capture('notification_email');
+      } catch (error) {
+        console.error('[EmailService] SendGrid send error:', error);
+        throw error;
+      }
     }
   }
 }

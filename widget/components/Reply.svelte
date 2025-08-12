@@ -8,6 +8,7 @@
   let nickname = ''
   let email = ''
   let required_field = '' // honeypot
+  let acceptNotify = false
 
   // anti-spam traps
   const renderedAt = Date.now()
@@ -50,6 +51,7 @@
         pageId,
         content,
         nickname,
+        acceptNotify,
         email,
         parentId,
         pageUrl,
@@ -113,7 +115,7 @@
         />
       </div>
     </div>
-</div>
+  </div>
   <div>
     <label for="reply_content" class="py-2 block text-sm font-medium text-gray-700 dark:text-white">{t('reply_placeholder')}</label>
     <div class="mt-1">
@@ -168,11 +170,25 @@
     <!-- time trap is sent via renderedAt/submittedAt in payload -->
   </div>
 
-  <div>
+  <div class="flex flex-col sm:flex-row gap-4">
+
+    <div class="order-1 sm:order-2 justify-center mt-2 flex items-start space-x-2">
+      <input
+        id="acceptNotify"
+        name="acceptNotify"
+        type="checkbox"
+        bind:checked={acceptNotify}
+        class="justify-center mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600"
+        aria-describedby="acceptNotify_help"
+      />
+      <label for="acceptNotify" class="text-sm text-gray-700 dark:text-white">
+        {t('receive_email_notification_of_replies') || 'Email me when someone replies to my comment'}
+      </label>
+    </div>
     <button
       type="submit"
       disabled={loading}
-      class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform duration-300 ease-in-out hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-500 dark:hover:bg-indigo-600"
+      class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform duration-300 ease-in-out hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-500 dark:hover:bg-indigo-600"
       cusdis-disabled={loading}
     >
       {#if loading}
