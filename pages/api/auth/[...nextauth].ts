@@ -29,7 +29,7 @@ export default NextAuth({
   adapter: Adapters.Prisma.Adapter({ prisma: prisma }),
 
   session: {
-    jwt: !!resolvedConfig.useLocalAuth,
+    jwt: true,
   },
 
   jwt: {
@@ -50,7 +50,7 @@ export default NextAuth({
     signIn() {
       statService.capture('signIn')
       return true
-    }
+    },
   },
 
   events: {

@@ -152,9 +152,11 @@ export default apiHandler()
 
     // Determine if this email should be auto-approved
     let shouldAutoApprove = false
+    let hasVerifiedEmail = false
     try {
       if (body.email) {
-        // If the email belongs to a verified user OR has any previously approved comment in this project
+        // If the email belongs to a verified user
+        // AND has a previously admin-approved comment in this project
         const verifiedUser = await prisma.user.findFirst({
           where: {
             email: body.email,
@@ -173,7 +175,7 @@ export default apiHandler()
           },
           select: { id: true },
         })
-
+        hasVerifiedEmail = Boolean(verifiedUser)
         shouldAutoApprove = Boolean(verifiedUser && priorApproved)
       }
     } catch (e) {
@@ -208,8 +210,8 @@ export default apiHandler()
       console.warn('auto-approve update failed', e)
     }
 
-    // If this commenter isn't auto-approved yet, send a one-time email verification
-    if (!isAutoApproved && body.email) {
+    // If this commenter isn't auto-approved yet, or they have verified their email, send a one-time email verification
+    if (!isAutoApproved && body.email && !hasVerifiedEmail) {
       try {
         // Prefer pageTitle for user-facing text; fall back to pageId
         const pageLabel = body.pageTitle || body.pageId
