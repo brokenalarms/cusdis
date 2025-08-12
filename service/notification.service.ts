@@ -16,6 +16,7 @@ export class NotificationService extends RequestScopeService {
   async addComment(comment: Comment, projectId: string) {
     // don't notify if comment is created by moderator
     if (comment.moderatorId) {
+      console.log('[NotificationService] Skip admin notification - moderator comment', { commentId: comment.id })
       return
     }
 
@@ -39,6 +40,7 @@ export class NotificationService extends RequestScopeService {
 
     // don't notify if disable in project settings
     if (!project.enableNotification) {
+      console.log('[NotificationService] Skip admin notification - project notifications disabled', { projectId })
       return
     }
 
@@ -65,6 +67,12 @@ export class NotificationService extends RequestScopeService {
       project.owner.notificationEmail || project.owner.email
 
     if (project.owner.enableNewCommentNotification) {
+      console.log('[NotificationService] Sending admin notification', { 
+        commentId: comment.id, 
+        to: notificationEmail,
+        approved: comment.approved 
+      })
+
       let unsubscribeToken = this.tokenService.genUnsubscribeNewCommentToken(
         project.owner.id,
       )
@@ -79,6 +87,11 @@ export class NotificationService extends RequestScopeService {
       }
 
       await this.emailService.send(msg)
+    } else {
+      console.log('[NotificationService] Skip admin notification - user preference disabled', { 
+        projectId, 
+        enableNewCommentNotification: project.owner.enableNewCommentNotification 
+      })
     }
   }
 

@@ -9,6 +9,7 @@ export class HookService extends RequestScopeService {
   webhookService = new WebhookService(this.req)
 
   async addComment(comment: Comment, projectId: string) {
+    console.log('[HookService] Processing new comment', { commentId: comment.id, projectId })
     this.notificationService.addComment(comment, projectId)
     this.webhookService.addComment(comment, projectId)
   }
