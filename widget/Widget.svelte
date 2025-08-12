@@ -56,13 +56,11 @@
         for (let c of comments) {
           if (c.id === parentId) {
             if (!c.replies) c.replies = { data: [] }
-            // Ensure the new comment has the proper structure
-            if (!comment.replies) comment.replies = { data: [] }
             c.replies.data = [comment, ...c.replies.data]
             return true
           }
           // Recursively search replies
-          if (c.replies && c.replies.data && c.replies.data.length > 0) {
+          if (c.replies?.data?.length > 0) {
             if (findAndAddReply(c.replies.data)) {
               return true
             }
