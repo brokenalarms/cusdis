@@ -192,6 +192,43 @@ export class CommentService extends RequestScopeService {
       },
     })
 
+    // Auto-approval logic: if user has verified email AND prior approved comment
+    let shouldAutoApprove = false
+    try {
+      if (body.email) {
+        const verifiedUser = await prisma.user.findFirst({
+          where: {
+            email: body.email,
+            emailVerified: { not: null },
+          },
+          select: { id: true },
+        })
+
+        const priorApproved = await prisma.comment.findFirst({
+          where: {
+            page: { projectId },
+            by_email: body.email,
+            approved: true,
+          },
+          select: { id: true },
+        })
+        
+        shouldAutoApprove = Boolean(verifiedUser && priorApproved)
+      }
+    } catch (e) {
+      console.warn('auto-approve check failed', e)
+    }
+
+    // Apply auto-approval if conditions met
+    if (shouldAutoApprove) {
+      await prisma.comment.update({
+        where: { id: created.id },
+        data: { approved: true },
+      })
+      created.approved = true
+    }
+
+    // Trigger hooks with final state
     await this.hookService.addComment(created, projectId)
 
     return created
@@ -227,6 +264,9 @@ export class CommentService extends RequestScopeService {
         parentId,
       },
     })
+
+    // Trigger reply notifications for moderator replies (since they're pre-approved)
+    await this.hookService.notificationService.sendReplyNotifications(created.id, parentId)
 
     return created
   }
