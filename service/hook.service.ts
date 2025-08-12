@@ -10,8 +10,12 @@ export class HookService extends RequestScopeService {
 
   async addComment(comment: Comment, projectId: string) {
     console.log('[HookService] Processing new comment', { commentId: comment.id, projectId })
-    this.notificationService.addComment(comment, projectId)
-    this.webhookService.addComment(comment, projectId)
+    try {
+      await this.notificationService.addComment(comment, projectId)
+    } catch (e) {
+      console.error('[HookService] Admin notification failed', e)
+    }
+    await this.webhookService.addComment(comment, projectId)
   }
 
   async approveComment(commentId: string, parentId?: string) {
