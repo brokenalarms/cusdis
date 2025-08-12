@@ -1,6 +1,7 @@
 import { resolvedConfig } from '../utils.server'
 import * as nodemailer from 'nodemailer'
 import sgMail from '@sendgrid/mail'
+import { Resend } from 'resend'
 import { statService } from './stat.service'
 
 export class EmailService {
@@ -17,17 +18,55 @@ export class EmailService {
     return resolvedConfig.sendgrid.apiKey
   }
 
-  get sender() {
-    return resolvedConfig.smtp.senderAddress
+  isResendEnabled() {
+    return Boolean(resolvedConfig.resend?.apiKey || process.env.RESEND_API_KEY)
   }
 
-  async send(msg: { to: string; from: string; subject: string; html: string }) {
+  get sender() {
+    // Prefer explicitly configured Resend "from", otherwise fall back to SMTP sender
+    return (
+      (resolvedConfig as any).resend?.from ||
+      resolvedConfig.smtp.senderAddress
+    )
+  }
+
+  async send(msg: { to: string | string[]; from?: string; subject: string; html: string }) {
+    // Normalize defaults
+    if (!msg.from) {
+      msg.from = this.sender
+    }
+    const toList = Array.isArray(msg.to) ? msg.to : [msg.to]
+
     console.log('[EmailService] Starting to send email', {
-      to: msg.to,
+      to: toList,
       from: msg.from,
       subject: msg.subject,
     });
-    if (this.isSMTPEnable()) {
+
+    // Prefer Resend API if configured
+    if (this.isResendEnabled()) {
+      try {
+        const apiKey = (resolvedConfig as any).resend?.apiKey || process.env.RESEND_API_KEY
+        const resend = new Resend(apiKey as string)
+        console.log('[EmailService] Using Resend API with sender', msg.from)
+        const { data, error } = await resend.emails.send({
+          from: msg.from as string,
+          to: toList as string[],
+          subject: msg.subject,
+          html: msg.html,
+        })
+        if (error) {
+          console.error('[EmailService] Resend send error:', error)
+          throw error
+        }
+        console.log('[EmailService] Resend email sent successfully', { id: (data as any)?.id })
+        statService.capture('notification_email')
+        return data
+      } catch (error) {
+        console.error('[EmailService] Resend send exception:', error)
+        throw error
+      }
+    } else if (this.isSMTPEnable()) {
       console.log('[EmailService] Using SMTP with sender', this.sender);
       const transporter = nodemailer.createTransport({
         host: resolvedConfig.smtp.host,
@@ -48,13 +87,21 @@ export class EmailService {
         console.error('[EmailService] SMTP verify failed:', verifyErr);
         throw verifyErr;
       }
-      const info = await transporter.sendMail(msg);
+      const info = await transporter.sendMail({
+        ...msg,
+        to: toList,
+        from: msg.from,
+      });
       console.log('[EmailService] SMTP email sent successfully', { messageId: (info as any)?.messageId, response: (info as any)?.response });
     } else if (this.isThirdpartyEnable()) {
       console.log('[EmailService] Using SendGrid with sender', this.sender);
       try {
         sgMail.setApiKey(resolvedConfig.sendgrid.apiKey);
-        await sgMail.send(msg);
+        await sgMail.send({
+          ...msg,
+          to: toList,
+          from: msg.from,
+        } as any);
         console.log('[EmailService] SendGrid email sent successfully');
         statService.capture('notification_email');
       } catch (error) {

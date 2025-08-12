@@ -43,6 +43,10 @@ export const resolvedConfig = {
   sendgrid: {
     apiKey: process.env.SENDGRID_API_KEY as EnvVariable,
   },
+  resend: {
+    apiKey: process.env.RESEND_API_KEY as EnvVariable,
+    from: process.env.RESEND_FROM as EnvVariable,
+  },
   sentry: {
     dsn: process.env.SENTRY_DSN as EnvVariable,
   },
