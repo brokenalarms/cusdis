@@ -11,7 +11,7 @@
 
 </script>
 
-<article class="pl-6 py-4 text-base bg-white rounded-lg mb-4 dark:bg-gray-900 {isChild ? 'ml-6 lg:ml-12' : ''}">
+<article class="pl-6 py-4 text-base bg-white rounded-lg mb-4 dark:bg-black {isChild ? 'ml-6 lg:ml-12' : ''}">
   <footer class="flex justify-between items-center mb-2">
     <div class="flex items-center">
       <p class="inline-flex items-center mr-3 text-sm text-gray-900 dark:text-white font-semibold">
@@ -49,7 +49,7 @@
       />
     </div>
   {/if}
-  {#if comment.replies.data.length > 0}
+  {#if comment.replies?.data?.length > 0}
     {#each comment.replies.data as child (child.id)}
       <svelte:self isChild={true} comment={child} />
     {/each}
