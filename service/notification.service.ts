@@ -73,7 +73,7 @@ export class NotificationService extends RequestScopeService {
 
       const msg = {
         to: notificationEmail, // Change to your recipient
-        from: resolvedConfig.smtp.senderAddress,
+        from: this.emailService.sender,
         subject: `New comment on "${fullComment.page.project.title}"`,
         html: makeNewCommentEmailTemplate({
           page_slug: fullComment.page.title || fullComment.page.slug,

@@ -1,4 +1,4 @@
-import { Container, Stack, Title, Text, Divider, Textarea, Box, Button, Anchor } from "@mantine/core"
+import { Anchor, Box, Button, Container, Divider, Stack, Text, Textarea, Title } from "@mantine/core"
 import { notifications } from "@mantine/notifications"
 import { Comment, Page, Project } from "@prisma/client"
 import { useRouter } from "next/router"
