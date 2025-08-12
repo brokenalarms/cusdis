@@ -178,7 +178,7 @@ export function makeConfirmReplyNotificationTemplate(data: {
     </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="eb3e0978-a51b-4471-84d6-c8f75a9ad378" data-mc-module-version="2019-10-22">
     <tbody>
       <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: inherit">You receive this email is because you checked "notify me" when added a comment on {{page_slug}}.</div>
+        <td style="padding:18px 0px 18px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: inherit">You receive this email is because you checked "notify me" when added a comment on "{{page_slug}}" on <b>{{page_url}}</b>.</div>
 <div style="font-family: inherit; text-align: inherit"><br></div>
 <div style="font-family: inherit; text-align: inherit">We only send email when you have new reply. You can unsubscribe anytime through an unsubscribe link on the notification email.</div><div></div></div></td>
       </tr>
