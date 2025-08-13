@@ -51,6 +51,7 @@ export default async function handler(
         id: true,
         createdAt: true,
         content: true,
+        moderatorId: true,
         page: {
           select: {
             slug: true,
@@ -69,6 +70,7 @@ export default async function handler(
       nickname: string
       commentCount: number
       comments: any[]
+      isAdmin: boolean
     }>()
 
     allComments.forEach(comment => {
@@ -79,10 +81,16 @@ export default async function handler(
           nickname: comment.by_nickname || '',
           commentCount: 0,
           comments: [],
+          isAdmin: false,
         })
       }
       const commenter = commenterMap.get(email)!
       commenter.commentCount++
+      
+      // Mark as admin if any comment has moderatorId
+      if (comment.moderatorId) {
+        commenter.isAdmin = true
+      }
       if (commenter.comments.length < 3) {
         commenter.comments.push({
           ...comment,

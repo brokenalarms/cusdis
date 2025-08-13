@@ -40,7 +40,7 @@ const updateUserSettings = async (params: {
 
 export function MainLayout(props: {
   children?: any,
-  id: 'comments' | 'commenters' | 'settings'
+  id: 'comments' | 'commenters' | 'settings' | 'deleted-comments'
   project: ProjectServerSideProps,
   isLoading?: boolean
 } & MainLayoutData) {

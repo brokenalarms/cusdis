@@ -44,13 +44,50 @@ export class CommentService extends RequestScopeService {
       .utc(comment.createdAt)
       .utcOffset(timezoneOffset)
       .format('YYYY-MM-DD HH:mm')
-    const parsedContent = markdown.render(comment.content) as string
+    
+    // Handle deleted comments with placeholder content
+    const isDeleted = comment.deletedAt !== null
+    const displayContent = isDeleted ? "This comment has been deleted" : comment.content
+    const displayNickname = isDeleted ? "deleted" : comment.by_nickname
+    
+    const parsedContent = markdown.render(displayContent) as string
+    
     return {
       ...comment,
+      by_nickname: displayNickname,
+      content: displayContent,
       parsedContent,
       parsedCreatedAt,
       replies: comment.replies || { data: [], commentCount: 0, pageSize: 0, pageCount: 0 }
     } as CommentItem
+  }
+
+  private filterDeletedCommentsWithoutActiveChildren(comments: any[]): any[] {
+    // Helper function to check if a comment has any non-deleted descendants
+    const hasActiveDescendants = (comment: any): boolean => {
+      if (!comment.replies || comment.replies.length === 0) {
+        return false
+      }
+      
+      // Check if any direct children are not deleted
+      const hasActiveDirectChildren = comment.replies.some((reply: any) => !reply.deletedAt)
+      if (hasActiveDirectChildren) {
+        return true
+      }
+      
+      // Recursively check deleted children for active descendants
+      return comment.replies.some((reply: any) => hasActiveDescendants(reply))
+    }
+    
+    return comments.filter(comment => {
+      // Keep non-deleted comments
+      if (!comment.deletedAt) {
+        return true
+      }
+      
+      // Keep deleted comments only if they have active descendants
+      return hasActiveDescendants(comment)
+    })
   }
 
   async getComments(
@@ -65,6 +102,7 @@ export class CommentService extends RequestScopeService {
       approved?: boolean
       pageSize?: number
       includeReplies?: boolean
+      includeDeletedParents?: boolean
     },
   ): Promise<CommentWrapper> {
     const pageSize = options?.pageSize || 10
@@ -89,12 +127,9 @@ export class CommentService extends RequestScopeService {
       }
     }
 
-    const where = {
+    const baseWhere = {
       approved: options?.approved === true ? true : options?.approved,
       parentId: options?.parentId,
-      deletedAt: {
-        equals: null,
-      },
       page: {
         slug: options?.pageSlug,
         projectId,
@@ -103,13 +138,19 @@ export class CommentService extends RequestScopeService {
             equals: null,
           },
           ownerId: options?.onlyOwn
-            ? await (
-                await this.getSession()
-              ).uid
+            ? (await this.getSession()).uid
             : undefined,
         },
       },
     } as Prisma.CommentWhereInput
+
+    // Build query based on includeDeletedParents option
+    const where = options?.includeDeletedParents 
+      ? baseWhere  // Include all comments (we'll filter post-fetch)
+      : {          // Exclude deleted comments at query level
+          ...baseWhere,
+          deletedAt: { equals: null }
+        }
 
     const baseQuery = {
       include,
@@ -132,8 +173,13 @@ export class CommentService extends RequestScopeService {
 
     const pageCount = Math.ceil(commentCount / pageSize) || 1
     
+    // Apply post-processing filtering only when includeDeletedParents is enabled
+    const filteredComments = options?.includeDeletedParents 
+      ? this.filterDeletedCommentsWithoutActiveChildren(comments)  // Keep deleted parents only if they have active children
+      : comments  // No filtering needed, query already excluded deleted comments
+    
     // Format comments - Prisma will have included replies if requested
-    const formattedComments = comments.map(comment => {
+    const formattedComments = filteredComments.map(comment => {
       const formatted = this.formatComment(comment, timezoneOffset)
       
       if (options?.includeReplies && comment.replies) {

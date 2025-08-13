@@ -69,6 +69,7 @@ export default apiHandler()
         parentId: null,
         pageSlug: query.pageId,
         page: Number(query.page) || 1,
+        includeDeletedParents: true,
         select: {
           by_nickname: true,
           moderator: {

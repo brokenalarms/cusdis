@@ -6,6 +6,7 @@ import { useRouter } from 'next/router'
 import React from 'react'
 import { useMutation, useQuery } from 'react-query'
 import { MainLayout } from '../../../../components/Layout'
+import { AdminControlBar } from '../../../../components/AdminControlBar'
 import { UserSession } from '../../../../service'
 import { CommentItem } from '../../../../service/comment.service'
 import { ProjectService } from '../../../../service/project.service'
@@ -18,6 +19,7 @@ type CommenterGroup = {
   nickname: string
   commentCount: number
   comments: CommentItem[]
+  isAdmin: boolean
 }
 
 type CommentersData = {
@@ -74,10 +76,10 @@ function CommentersPage(props: {
   const toggleSelected = (email: string) => {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(x => x !== email) : [...prev, email])
   }
-  const selectAllOnPage = () => {
-    const emails = getCommentersQuery.data?.data?.map((c) => c.email) || []
-    setSelectedEmails(emails)
-  }
+
+  // Admin filter state
+  const [hideAdminPosts, setHideAdminPosts] = React.useState(false)
+  
   const clearSelection = () => setSelectedEmails([])
 
   // Batch delete by email handler
@@ -110,24 +112,43 @@ function CommentersPage(props: {
     }
   }
 
+  // Control bar buttons configuration
+  const controlBarButtons = [
+    {
+      label: `Delete All Comments from Selected (${selectedEmails.length})`,
+      color: 'red',
+      variant: 'light',
+      loading: isBatchDeleting,
+      disabled: selectedEmails.length === 0,
+      onClick: handleBatchDeleteByEmail,
+    },
+  ]
+
+  // Apply admin filtering
+  const allCommenters = getCommentersQuery.data?.data || []
+  const filteredCommenters = hideAdminPosts 
+    ? allCommenters.filter(commenter => !commenter.isAdmin)
+    : allCommenters
+
+  const selectAllOnPage = () => {
+    const emails = filteredCommenters.map((c) => c.email)
+    setSelectedEmails(emails)
+  }
+
   return (
     <>
       <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isFetching}>
         <Stack>
-          <Group position="apart">
-            <Group spacing={8}>
-              <Button size="xs" color="red" variant="light" onClick={handleBatchDeleteByEmail} loading={isBatchDeleting} disabled={selectedEmails.length === 0}>
-                Delete All Comments from Selected ({selectedEmails.length})
-              </Button>
-              <Button size="xs" variant="subtle" onClick={selectAllOnPage} disabled={!getCommentersQuery.data?.data?.length}>
-                Select All on Page
-              </Button>
-              <Button size="xs" variant="subtle" onClick={clearSelection} disabled={selectedEmails.length === 0}>
-                Clear Selection
-              </Button>
-            </Group>
-            <Text size="xs" color="dimmed">{getCommentersQuery.data?.data?.length || 0} commenters on this page</Text>
-          </Group>
+          <AdminControlBar
+            selectedCount={selectedEmails.length}
+            totalCount={filteredCommenters.length}
+            onSelectAll={selectAllOnPage}
+            onClearSelection={clearSelection}
+            buttons={controlBarButtons}
+            showAdminFilter={true}
+            hideAdminPosts={hideAdminPosts}
+            onToggleAdminFilter={setHideAdminPosts}
+          />
           <List listStyleType={'none'} styles={{
             root: {
               border: '1px solid #eee'
@@ -140,7 +161,7 @@ function CommentersPage(props: {
               }
             }
           }}>
-            {getCommentersQuery.data?.data.map(commenter => {
+            {filteredCommenters.map(commenter => {
               return (
                 <List.Item key={commenter.email}>
                   <Group align="flex-start" spacing={12}>

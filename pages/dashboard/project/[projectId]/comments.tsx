@@ -7,6 +7,7 @@ import React from 'react'
 import { AiOutlineCheck, AiOutlineSmile } from 'react-icons/ai'
 import { useMutation, useQuery } from 'react-query'
 import { MainLayout } from '../../../../components/Layout'
+import { AdminControlBar } from '../../../../components/AdminControlBar'
 import { UserSession } from '../../../../service'
 import { CommentItem, CommentWrapper } from '../../../../service/comment.service'
 import { ProjectService } from '../../../../service/project.service'
@@ -184,10 +185,10 @@ function ProjectPage(props: {
   const toggleSelected = (id: string) => {
     setSelectedCommentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
-  const selectAllOnPage = () => {
-    const ids = getCommentsQuery.data?.data?.map((c) => c.id) || []
-    setSelectedCommentIds(ids)
-  }
+
+  // Admin filter state
+  const [hideAdminPosts, setHideAdminPosts] = React.useState(false)
+  
   const clearSelection = () => setSelectedCommentIds([])
 
   // Batch approve handler uses existing approveComment()
@@ -233,27 +234,50 @@ function ProjectPage(props: {
 
   const { commentCount = 0, pageCount = 0 } = getCommentsQuery.data || {}
 
+  // Control bar buttons configuration
+  const controlBarButtons = [
+    {
+      label: `Approve Selected (${selectedCommentIds.length})`,
+      color: 'green',
+      loading: isBatchApproving,
+      disabled: selectedCommentIds.length === 0,
+      onClick: handleBatchApprove,
+    },
+    {
+      label: 'Delete Selected',
+      color: 'red',
+      variant: 'light',
+      loading: isBatchDeleting,
+      disabled: selectedCommentIds.length === 0,
+      onClick: handleBatchDelete,
+    },
+  ]
+
+  // Apply admin filtering
+  const allComments = getCommentsQuery.data?.data || []
+  const filteredComments = hideAdminPosts 
+    ? allComments.filter(comment => !comment.moderatorId)
+    : allComments
+
+  const selectAllOnPage = () => {
+    const ids = filteredComments.map((c) => c.id)
+    setSelectedCommentIds(ids)
+  }
+
   return (
     <>
       <MainLayout id="comments" project={props.project} {...props.mainLayoutData} isLoading={getCommentsQuery.isFetching}>
         <Stack>
-          <Group position="apart">
-            <Group spacing={8}>
-              <Button size="xs" color="green" onClick={handleBatchApprove} loading={isBatchApproving} disabled={selectedCommentIds.length === 0}>
-                Approve Selected ({selectedCommentIds.length})
-              </Button>
-              <Button size="xs" color="red" variant="light" onClick={handleBatchDelete} loading={isBatchDeleting} disabled={selectedCommentIds.length === 0}>
-                Delete Selected
-              </Button>
-              <Button size="xs" variant="subtle" onClick={selectAllOnPage} disabled={!getCommentsQuery.data?.data?.length}>
-                Select All on Page
-              </Button>
-              <Button size="xs" variant="subtle" onClick={clearSelection} disabled={selectedCommentIds.length === 0}>
-                Clear Selection
-              </Button>
-            </Group>
-            <Text size="xs" color="dimmed">{getCommentsQuery.data?.data?.length || 0} items on this page</Text>
-          </Group>
+          <AdminControlBar
+            selectedCount={selectedCommentIds.length}
+            totalCount={filteredComments.length}
+            onSelectAll={selectAllOnPage}
+            onClearSelection={clearSelection}
+            buttons={controlBarButtons}
+            showAdminFilter={true}
+            hideAdminPosts={hideAdminPosts}
+            onToggleAdminFilter={setHideAdminPosts}
+          />
           <List listStyleType={'none'} styles={{
             root: {
               border: '1px solid #eee'
@@ -267,7 +291,7 @@ function ProjectPage(props: {
               // borderBottom: '1px solid #eee',
             }
           }}>
-            {getCommentsQuery.data?.data.map(comment => {
+            {filteredComments.map(comment => {
               return (
                 <List.Item key={comment.id}>
                   <Group align="flex-start" spacing={12}>

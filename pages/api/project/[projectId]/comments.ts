@@ -46,6 +46,7 @@ export default async function handler(
         by_nickname: true,
         by_email: true,
         approved: true,
+        moderatorId: true,
       },
     })
 
