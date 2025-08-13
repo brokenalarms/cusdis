@@ -1,21 +1,21 @@
-import { Anchor, Box, Button, Center, Group, List, Stack, Text, Checkbox } from '@mantine/core'
-import { notifications } from '@mantine/notifications'
+import { Anchor, Box, Button, Checkbox, Group, List, Stack, Text } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { isAdmin } from '../../../../utils/adminHelpers'
-import { MODFlag } from '../../../../components/MODFlag'
-import { useAdminFilter } from '../../../../hooks/useAdminFilter'
+import { notifications } from '@mantine/notifications'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
+import { MODFlag } from '../../../../components/MODFlag'
+import { useAdminFilter } from '../../../../hooks/useAdminFilter'
 import { UserSession } from '../../../../service'
 import { CommentItem } from '../../../../service/comment.service'
 import { ProjectService } from '../../../../service/project.service'
 import { MainLayoutData, ViewDataService } from '../../../../service/viewData.service'
 import { apiClient } from '../../../../utils.client'
 import { getSession } from '../../../../utils.server'
+import { isAdmin } from '../../../../utils/adminHelpers'
 
 type CommenterGroup = {
   email: string
@@ -49,6 +49,84 @@ const batchDeleteCommentsByEmail = async ({ projectId, emails }) => {
     data: { emails }
   })
   return res.data
+}
+
+function CommenterToolbar(props: {
+  commenter: CommenterGroup,
+  refetch: any,
+  currentPage: number,
+}) {
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  const deleteCommenterMutation = useMutation(
+    (data: { projectId: string, emails: string[] }) => batchDeleteCommentsByEmail(data),
+    {
+      onSuccess: (result, { emails }) => {
+        // Update UI only after API success
+        const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page: props.currentPage }]
+        queryClient.setQueryData<CommentersData>(queryKey, (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            data: old.data.filter(commenter => !emails.includes(commenter.email)),
+            total: Math.max(0, old.total - emails.length)
+          }
+        })
+        notifications.show({
+          title: 'Deleted',
+          message: `Deleted all comments from ${emails.length} commenter(s)`,
+          color: 'red'
+        })
+      },
+      onError: (err, { emails }, context) => {
+        // Refetch to ensure consistency after error
+        props.refetch()
+        notifications.show({ 
+          title: 'Error', 
+          message: 'Delete operation failed', 
+          color: 'red' 
+        })
+      }
+    }
+  )
+
+  return (
+    <Group sx={{ alignSelf: 'flex-start', marginTop: 8 }}>
+      <Button 
+        loading={deleteCommenterMutation.isLoading} 
+        onClick={() => {
+          modals.openConfirmModal({
+            title: 'Delete all comments from user',
+            children: (
+              <Stack spacing="xs">
+                <Text size="sm">
+                  Delete all comments from <strong>{props.commenter.nickname}</strong> ({props.commenter.email})?
+                </Text>
+                <Text size="sm" color="red">
+                  This will soft-delete all {props.commenter.commentCount} comment{props.commenter.commentCount !== 1 ? 's' : ''} from this user.
+                </Text>
+                <Text size="sm" color="red">
+                  Deleted comments can be restored from the deleted comments page.
+                </Text>
+              </Stack>
+            ),
+            labels: { confirm: 'Delete All Comments', cancel: 'Cancel' },
+            confirmProps: { color: 'red' },
+            onConfirm: () => deleteCommenterMutation.mutate({ 
+              projectId: router.query.projectId as string, 
+              emails: [props.commenter.email] 
+            })
+          })
+        }} 
+        color="red" 
+        size="xs" 
+        variant={'light'}
+      >
+        Delete All Comments
+      </Button>
+    </Group>
+  )
 }
 
 function CommentersPage(props: {
@@ -199,7 +277,7 @@ function CommentersPage(props: {
         value: page,
         onChange: setPage
       }}
-    >
+      emptyState="No commenters yet">
       {filteredCommenters.map(commenter => (
         <List.Item key={commenter.email}>
           <Group align="flex-start" spacing={12}>
@@ -255,21 +333,16 @@ function CommentersPage(props: {
                   </Text>
                 )}
               </Stack>
+              
+              <CommenterToolbar 
+                commenter={commenter} 
+                refetch={getCommentersQuery.refetch} 
+                currentPage={page} 
+              />
             </Stack>
           </Group>
         </List.Item>
       ))}
-      {getCommentersQuery.data?.data.length === 0 && (
-        <Box p={'xl'} sx={{
-          backgroundColor: '#fff'
-        }}>
-          <Center>
-            <Text color="gray" size="sm">
-              No commenters yet
-            </Text>
-          </Center>
-        </Box>
-      )}
     </AdminPageLayout>
   )
 }

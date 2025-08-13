@@ -464,6 +464,7 @@ function ProjectPage(props: {
         value: page,
         onChange: setPage
       }}
+      emptyState="No comments yet"
     >
       {filteredComments.map(comment => (
         <List.Item key={comment.id}>
@@ -531,17 +532,6 @@ function ProjectPage(props: {
           </Group>
         </List.Item>
       ))}
-      {getCommentsQuery.data?.data.length === 0 && (
-        <Box p={'xl'} sx={{
-          backgroundColor: '#fff'
-        }}>
-          <Center>
-            <Text color="gray" size="sm">
-              No comments yet
-            </Text>
-          </Center>
-        </Box>
-      )}
     </AdminPageLayout>
   )
 }

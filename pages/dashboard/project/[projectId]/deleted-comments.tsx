@@ -265,108 +265,146 @@ function DeletedCommentsPage(props: {
         onToggleAdminFilter: setHideAdminPosts,
         globalCount: getDeletedCommentsQuery.data?.commentCount,
         currentPage: page,
-        totalPages: getDeletedCommentsQuery.data?.pageCount || 0
+        totalPages: getDeletedCommentsQuery.data?.pageCount || 0,
       }}
       pagination={{
         total: getDeletedCommentsQuery.data?.pageCount || 0,
         value: page,
-        onChange: setPage
+        onChange: setPage,
       }}
+      emptyState="No deleted comments"
     >
-      {filteredComments.map(comment => (
+      {filteredComments.map((comment) => (
         <List.Item key={comment.id}>
           <Group align="flex-start" spacing={12}>
-            <Checkbox aria-label="Select comment" checked={isSelected(comment.id)} onChange={() => toggleSelected(comment.id)} />
+            <Checkbox
+              aria-label="Select comment"
+              checked={isSelected(comment.id)}
+              onChange={() => toggleSelected(comment.id)}
+            />
             <Stack>
               <Stack spacing={4}>
-                <Group spacing={8} sx={{
-                  fontSize: 14
-                }}>
-                  <Text sx={{
-                    fontWeight: 500,
-                    color: 'red'
-                  }}>
+                <Group
+                  spacing={8}
+                  sx={{
+                    fontSize: 14,
+                  }}
+                >
+                  <Text
+                    sx={{
+                      fontWeight: 500,
+                      color: 'red',
+                    }}
+                  >
                     [DELETED] {comment.by_nickname}
                   </Text>
                   {isAdmin(comment) && <MODFlag />}
-                  <Text sx={{
-                    fontWeight: 400,
-                    color: 'gray'
-                  }}>
+                  <Text
+                    sx={{
+                      fontWeight: 400,
+                      color: 'gray',
+                    }}
+                  >
                     {comment.by_email}
                   </Text>
                   {comment.by_email && !comment.isEmailVerified && (
-                    <Text sx={{
-                      fontWeight: 500,
-                      color: 'orange',
-                      fontSize: 11
-                    }}>
+                    <Text
+                      sx={{
+                        fontWeight: 500,
+                        color: 'orange',
+                        fontSize: 11,
+                      }}
+                    >
                       UNVERIFIED
                     </Text>
                   )}
                 </Group>
-                <Group spacing={8} sx={{
-                  fontSize: 12
-                }}>
-                  <Text sx={{}}>
-                    {comment.parsedCreatedAt}
-                  </Text>
-                  <Text>
-                    on
-                  </Text>
-                  <Anchor href={comment.page.url} target="_blank">{comment.page.slug}</Anchor>
+                <Group
+                  spacing={8}
+                  sx={{
+                    fontSize: 12,
+                  }}
+                >
+                  <Text sx={{}}>{comment.parsedCreatedAt}</Text>
+                  <Text>on</Text>
+                  <Anchor href={comment.page.url} target="_blank">
+                    {comment.page.slug}
+                  </Anchor>
                 </Group>
-                <Box sx={{
-                  marginTop: 8,
-                  padding: 8,
-                  backgroundColor: '#f8f8f8',
-                  borderLeft: '4px solid #red',
-                  fontStyle: 'italic'
-                }}>
+                <Box
+                  sx={{
+                    marginTop: 8,
+                    padding: 8,
+                    backgroundColor: '#f8f8f8',
+                    borderLeft: '4px solid #red',
+                    fontStyle: 'italic',
+                  }}
+                >
                   {comment.content}
                 </Box>
                 {comment.replies.commentCount > 0 && (
                   <Text size="xs" color="dimmed" sx={{ marginTop: 8 }}>
-                    {comment.replies.commentCount} repl{comment.replies.commentCount === 1 ? 'y' : 'ies'} (will be affected by restore/delete)
+                    {comment.replies.commentCount} repl
+                    {comment.replies.commentCount === 1 ? 'y' : 'ies'} (will be
+                    affected by restore/delete)
                   </Text>
                 )}
               </Stack>
               <Group sx={{ alignSelf: 'flex-start' }}>
-                <Button 
-                  loading={restoreCommentMutation.isLoading && restoreCommentMutation.variables?.commentId === comment.id} 
-                  onClick={() => restoreCommentMutation.mutate({ commentId: comment.id })} 
-                  leftIcon={<AiOutlineReload />} 
-                  color="green" 
-                  size="xs" 
+                <Button
+                  loading={
+                    restoreCommentMutation.isLoading &&
+                    restoreCommentMutation.variables?.commentId === comment.id
+                  }
+                  onClick={() =>
+                    restoreCommentMutation.mutate({ commentId: comment.id })
+                  }
+                  leftIcon={<AiOutlineReload />}
+                  color="green"
+                  size="xs"
                   variant={'light'}
                 >
                   Restore
                 </Button>
-                <Button 
-                  loading={hardDeleteCommentMutation.isLoading && hardDeleteCommentMutation.variables?.commentId === comment.id} 
+                <Button
+                  loading={
+                    hardDeleteCommentMutation.isLoading &&
+                    hardDeleteCommentMutation.variables?.commentId ===
+                      comment.id
+                  }
                   onClick={() => {
                     modals.openConfirmModal({
                       title: 'Permanently delete comment',
                       children: (
                         <Stack spacing="xs">
                           <Text size="sm">
-                            Are you sure you want to permanently delete this comment? This action cannot be undone.
+                            Are you sure you want to permanently delete this
+                            comment? This action cannot be undone.
                           </Text>
                           {comment.replies.commentCount > 0 && (
                             <Text size="sm" weight={500} color="red">
-                              This will also permanently delete {comment.replies.commentCount} repl{comment.replies.commentCount === 1 ? 'y' : 'ies'}.
+                              This will also permanently delete{' '}
+                              {comment.replies.commentCount} repl
+                              {comment.replies.commentCount === 1 ? 'y' : 'ies'}
+                              .
                             </Text>
                           )}
                         </Stack>
                       ),
-                      labels: { confirm: 'Permanently Delete', cancel: 'Cancel' },
+                      labels: {
+                        confirm: 'Permanently Delete',
+                        cancel: 'Cancel',
+                      },
                       confirmProps: { color: 'red' },
-                      onConfirm: () => hardDeleteCommentMutation.mutate({ commentId: comment.id })
+                      onConfirm: () =>
+                        hardDeleteCommentMutation.mutate({
+                          commentId: comment.id,
+                        }),
                     })
-                  }} 
-                  leftIcon={<AiOutlineDelete />} 
-                  color="red" 
-                  size="xs" 
+                  }}
+                  leftIcon={<AiOutlineDelete />}
+                  color="red"
+                  size="xs"
                   variant={'subtle'}
                 >
                   Hard Delete
@@ -376,17 +414,6 @@ function DeletedCommentsPage(props: {
           </Group>
         </List.Item>
       ))}
-      {filteredComments.length === 0 && (
-        <Box p={'xl'} sx={{
-          backgroundColor: '#fff'
-        }}>
-          <Center>
-            <Text color="gray" size="sm">
-              No deleted comments
-            </Text>
-          </Center>
-        </Box>
-      )}
     </AdminPageLayout>
   )
 }
