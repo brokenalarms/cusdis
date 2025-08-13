@@ -19,14 +19,13 @@ export default withProjectAuth(async function handler(
       ? parseInt(req.headers['x-timezone-offset'] as string)
       : 0
 
-    // Use the new getDeletedComments method
+    // Get all deleted comments (no parentId filter)
     const deletedComments = await commentService.getDeletedComments(
       project.id,
       timezoneOffset,
       {
         page,
         pageSize: 10,
-        parentId: null, // Only root deleted comments
       },
     )
 

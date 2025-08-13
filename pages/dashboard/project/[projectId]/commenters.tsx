@@ -179,7 +179,7 @@ function CommentersPage(props: {
   return (
     <>
       <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isLoading}>
-        <Stack>
+        <Stack sx={{ height: '100vh', maxHeight: 'calc(100vh - 200px)' }}>
           <AdminControlBar
             selectedCount={selectedEmails.length}
             totalCount={filteredCommenters.length}
@@ -193,19 +193,20 @@ function CommentersPage(props: {
             currentPage={page}
             totalPages={getCommentersQuery.data?.pageCount}
           />
-          <List listStyleType={'none'} styles={{
-            root: {
-              border: '1px solid #eee'
-            },
-            item: {
-              backgroundColor: '#fff',
-              padding: 12,
-              ':not(:last-child)': {
-                borderBottom: '1px solid #eee',
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            <List listStyleType={'none'} styles={{
+              root: {
+                border: '1px solid #eee'
+              },
+              item: {
+                backgroundColor: '#fff',
+                padding: 12,
+                ':not(:last-child)': {
+                  borderBottom: '1px solid #eee',
+                }
               }
-            }
-          }}>
-            {filteredCommenters.map(commenter => {
+            }}>
+              {filteredCommenters.map(commenter => {
               return (
                 <List.Item key={commenter.email}>
                   <Group align="flex-start" spacing={12}>
@@ -265,20 +266,21 @@ function CommentersPage(props: {
                   </Group>
                 </List.Item>
               )
-            })}
-          </List>
-          {getCommentersQuery.data?.data.length === 0 && (
-            <Box p={'xl'} sx={{
-              backgroundColor: '#fff'
-            }}>
-              <Center>
-                <Text color="gray" size="sm">
-                  No commenters yet
-                </Text>
-              </Center>
-            </Box>
-          )}
-          <Box>
+              })}
+            </List>
+            {getCommentersQuery.data?.data.length === 0 && (
+              <Box p={'xl'} sx={{
+                backgroundColor: '#fff'
+              }}>
+                <Center>
+                  <Text color="gray" size="sm">
+                    No commenters yet
+                  </Text>
+                </Center>
+              </Box>
+            )}
+          </Box>
+          <Box sx={{ padding: '16px 0' }}>
             <Pagination total={getCommentersQuery.data?.pageCount || 0} value={page} onChange={count => {
               setPage(count)
             }} />

@@ -73,7 +73,6 @@ function DeletedCommentsPage(props: {
   
   // Admin filtering using reusable hook
   const allComments = getDeletedCommentsQuery.data?.data || []
-  console.log('🔍 All deleted comments:', allComments.length, 'Admin comments:', allComments.filter(c => c.moderatorId).length)
   const { hideAdminPosts, setHideAdminPosts, filteredItems: filteredComments } = useAdminFilter(allComments)
   
   // Individual action mutations
@@ -253,7 +252,7 @@ function DeletedCommentsPage(props: {
   return (
     <>
       <MainLayout id="deleted-comments" project={props.project} {...props.mainLayoutData} isLoading={getDeletedCommentsQuery.isLoading}>
-        <Stack>
+        <Stack sx={{ height: '100vh', maxHeight: 'calc(100vh - 200px)' }}>
           <AdminControlBar
             selectedCount={selectedCommentIds.length}
             totalCount={filteredComments.length}
@@ -267,19 +266,20 @@ function DeletedCommentsPage(props: {
             currentPage={page}
             totalPages={getDeletedCommentsQuery.data?.pageCount}
           />
-          <List listStyleType={'none'} styles={{
-            root: {
-              border: '1px solid #eee'
-            },
-            item: {
-              backgroundColor: '#fff',
-              padding: 12,
-              ':not(:last-child)': {
-                borderBottom: '1px solid #eee',
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            <List listStyleType={'none'} styles={{
+              root: {
+                border: '1px solid #eee'
+              },
+              item: {
+                backgroundColor: '#fff',
+                padding: 12,
+                ':not(:last-child)': {
+                  borderBottom: '1px solid #eee',
+                }
               }
-            }
-          }}>
-            {filteredComments.map(comment => {
+            }}>
+              {filteredComments.map(comment => {
               return (
                 <List.Item key={comment.id}>
                   <Group align="flex-start" spacing={12}>
@@ -383,20 +383,21 @@ function DeletedCommentsPage(props: {
                   </Group>
                 </List.Item>
               )
-            })}
-          </List>
-          {filteredComments.length === 0 && (
-            <Box p={'xl'} sx={{
-              backgroundColor: '#fff'
-            }}>
-              <Center>
-                <Text color="gray" size="sm">
-                  No deleted comments
-                </Text>
-              </Center>
-            </Box>
-          )}
-          <Box>
+              })}
+            </List>
+            {filteredComments.length === 0 && (
+              <Box p={'xl'} sx={{
+                backgroundColor: '#fff'
+              }}>
+                <Center>
+                  <Text color="gray" size="sm">
+                    No deleted comments
+                  </Text>
+                </Center>
+              </Box>
+            )}
+          </Box>
+          <Box sx={{ padding: '16px 0' }}>
             <Pagination total={getDeletedCommentsQuery.data?.pageCount || 0} value={page} onChange={count => {
               setPage(count)
             }} />

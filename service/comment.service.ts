@@ -500,7 +500,6 @@ export class CommentService extends RequestScopeService {
     projectId: string,
     timezoneOffset: number,
     options?: {
-      parentId?: string
       page?: number
       pageSize?: number
       select?: Prisma.CommentSelect
@@ -514,7 +513,6 @@ export class CommentService extends RequestScopeService {
         projectId,
       },
       deletedAt: { not: null }, // Only deleted comments
-      parentId: options?.parentId || null,
     } as Prisma.CommentWhereInput
 
     const [comments, commentCount] = await Promise.all([

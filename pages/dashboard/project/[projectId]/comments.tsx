@@ -444,7 +444,7 @@ function ProjectPage(props: {
   return (
     <>
       <MainLayout id="comments" project={props.project} {...props.mainLayoutData} isLoading={getCommentsQuery.isLoading}>
-        <Stack>
+        <Stack sx={{ height: '100vh', maxHeight: 'calc(100vh - 200px)' }}>
           <AdminControlBar
             selectedCount={selectedCommentIds.length}
             totalCount={filteredComments.length}
@@ -458,20 +458,21 @@ function ProjectPage(props: {
             currentPage={page}
             totalPages={pageCount}
           />
-          <List listStyleType={'none'} styles={{
-            root: {
-              border: '1px solid #eee'
-            },
-            item: {
-              backgroundColor: '#fff',
-              padding: 12,
-              ':not(:last-child)': {
-                borderBottom: '1px solid #eee',
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            <List listStyleType={'none'} styles={{
+              root: {
+                border: '1px solid #eee'
+              },
+              item: {
+                backgroundColor: '#fff',
+                padding: 12,
+                ':not(:last-child)': {
+                  borderBottom: '1px solid #eee',
+                }
+                // borderBottom: '1px solid #eee',
               }
-              // borderBottom: '1px solid #eee',
-            }
-          }}>
-            {filteredComments.map(comment => {
+            }}>
+              {filteredComments.map(comment => {
               return (
                 <List.Item key={comment.id}>
                   <Group align="flex-start" spacing={12}>
@@ -538,20 +539,21 @@ function ProjectPage(props: {
                   </Group>
                 </List.Item>
               )
-            })}
-          </List>
-          {getCommentsQuery.data?.data.length === 0 && (
-            <Box p={'xl'} sx={{
-              backgroundColor: '#fff'
-            }}>
-              <Center>
-                <Text color="gray" size="sm">
-                  No comments yet
-                </Text>
-              </Center>
-            </Box>
-          )}
-          <Box>
+              })}
+            </List>
+            {getCommentsQuery.data?.data.length === 0 && (
+              <Box p={'xl'} sx={{
+                backgroundColor: '#fff'
+              }}>
+                <Center>
+                  <Text color="gray" size="sm">
+                    No comments yet
+                  </Text>
+                </Center>
+              </Box>
+            )}
+          </Box>
+          <Box sx={{ padding: '16px 0' }}>
             <Pagination total={getCommentsQuery.data?.pageCount || 0} value={page} onChange={count => {
               setPage(count)
             }} />
