@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Textarea, Checkbox } from '@mantine/core'
+import { Anchor, Box, Button, Center, Group, List, Stack, Text, Textarea, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { modals } from '@mantine/modals'
 import { isAdmin } from '../../../../utils/adminHelpers'
@@ -10,8 +10,7 @@ import { useRouter } from 'next/router'
 import React from 'react'
 import { AiOutlineCheck, AiOutlineSmile } from 'react-icons/ai'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
-import { MainLayout } from '../../../../components/Layout'
-import { AdminControlBar } from '../../../../components/AdminControlBar'
+import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { UserSession } from '../../../../service'
 import { CommentItem, CommentWrapper } from '../../../../service/comment.service'
 import { ProjectService } from '../../../../service/project.service'
@@ -442,125 +441,108 @@ function ProjectPage(props: {
   }
 
   return (
-    <>
-      <MainLayout id="comments" project={props.project} {...props.mainLayoutData} isLoading={getCommentsQuery.isLoading}>
-        <Stack sx={{ height: '100vh', maxHeight: 'calc(100vh - 200px)' }}>
-          <AdminControlBar
-            selectedCount={selectedCommentIds.length}
-            totalCount={filteredComments.length}
-            onSelectAll={selectAllOnPage}
-            onClearSelection={clearSelection}
-            buttons={controlBarButtons}
-            showAdminFilter={true}
-            hideAdminPosts={hideAdminPosts}
-            onToggleAdminFilter={setHideAdminPosts}
-            globalCount={commentCount}
-            currentPage={page}
-            totalPages={pageCount}
-          />
-          <Box sx={{ flex: 1, overflow: 'auto' }}>
-            <List listStyleType={'none'} styles={{
-              root: {
-                border: '1px solid #eee'
-              },
-              item: {
-                backgroundColor: '#fff',
-                padding: 12,
-                ':not(:last-child)': {
-                  borderBottom: '1px solid #eee',
-                }
-                // borderBottom: '1px solid #eee',
-              }
-            }}>
-              {filteredComments.map(comment => {
-              return (
-                <List.Item key={comment.id}>
-                  <Group align="flex-start" spacing={12}>
-                    <Checkbox aria-label="Select comment" checked={isSelected(comment.id)} onChange={() => toggleSelected(comment.id)} />
-                    <Stack>
-                    <Stack spacing={4}>
-                      <Group spacing={8} sx={{
-                        fontSize: 14
-                      }}>
-                        <Text sx={{
-                          fontWeight: 500
-                        }}>
-                          {comment.by_nickname}
-                        </Text>
-                        {isAdmin(comment) && <MODFlag />}
-                        <Text sx={{
-                          fontWeight: 400,
-                          color: 'gray'
-                        }}>
-                          {comment.by_email}
-                        </Text>
-                        {comment.by_email && !comment.isEmailVerified && (
-                          <Text sx={{
-                            fontWeight: 500,
-                            color: 'orange',
-                            fontSize: 11
-                          }}>
-                            UNVERIFIED
-                          </Text>
-                        )}
-                      </Group>
-                      <Group spacing={8} sx={{
-                        fontSize: 12
-                      }}>
-                        <Text sx={{
-                        }}>
-                          {comment.parsedCreatedAt}
-                        </Text>
-                        <Text>
-                          on
-                        </Text>
-                        <Anchor href={comment.page.url} target="_blank">{comment.page.slug}</Anchor>
-                      </Group>
-                      <Box sx={{
-                        marginTop: 8
-                      }}>
-                        {comment.content}
-                      </Box>
-                      {comment.replies.commentCount > 0 && (
-                        <Text size="xs" color="dimmed" sx={{ marginTop: 8 }}>
-                          {comment.replies.commentCount} repl{comment.replies.commentCount === 1 ? 'y' : 'ies'}
-                        </Text>
-                      )}
-                    </Stack>
-                    <Group sx={{
-                    }}>
-                      <CommentToolbar 
-                        comment={comment} 
-                        refetch={getCommentsQuery.refetch} 
-                        currentPage={page} 
-                      />
-                    </Group>
-                    </Stack>
-                  </Group>
-                </List.Item>
-              )
-              })}
-            </List>
-            {getCommentsQuery.data?.data.length === 0 && (
-              <Box p={'xl'} sx={{
-                backgroundColor: '#fff'
+    <AdminPageLayout
+      id="comments"
+      project={props.project}
+      mainLayoutData={props.mainLayoutData}
+      isLoading={getCommentsQuery.isLoading}
+      controlBar={{
+        selectedCount: selectedCommentIds.length,
+        totalCount: filteredComments.length,
+        onSelectAll: selectAllOnPage,
+        onClearSelection: clearSelection,
+        buttons: controlBarButtons,
+        showAdminFilter: true,
+        hideAdminPosts,
+        onToggleAdminFilter: setHideAdminPosts,
+        globalCount: commentCount,
+        currentPage: page,
+        totalPages: pageCount
+      }}
+      pagination={{
+        total: getCommentsQuery.data?.pageCount || 0,
+        value: page,
+        onChange: setPage
+      }}
+    >
+      {filteredComments.map(comment => (
+        <List.Item key={comment.id}>
+          <Group align="flex-start" spacing={12}>
+            <Checkbox aria-label="Select comment" checked={isSelected(comment.id)} onChange={() => toggleSelected(comment.id)} />
+            <Stack>
+            <Stack spacing={4}>
+              <Group spacing={8} sx={{
+                fontSize: 14
               }}>
-                <Center>
-                  <Text color="gray" size="sm">
-                    No comments yet
+                <Text sx={{
+                  fontWeight: 500
+                }}>
+                  {comment.by_nickname}
+                </Text>
+                {isAdmin(comment) && <MODFlag />}
+                <Text sx={{
+                  fontWeight: 400,
+                  color: 'gray'
+                }}>
+                  {comment.by_email}
+                </Text>
+                {comment.by_email && !comment.isEmailVerified && (
+                  <Text sx={{
+                    fontWeight: 500,
+                    color: 'orange',
+                    fontSize: 11
+                  }}>
+                    UNVERIFIED
                   </Text>
-                </Center>
+                )}
+              </Group>
+              <Group spacing={8} sx={{
+                fontSize: 12
+              }}>
+                <Text sx={{
+                }}>
+                  {comment.parsedCreatedAt}
+                </Text>
+                <Text>
+                  on
+                </Text>
+                <Anchor href={comment.page.url} target="_blank">{comment.page.slug}</Anchor>
+              </Group>
+              <Box sx={{
+                marginTop: 8
+              }}>
+                {comment.content}
               </Box>
-            )}
-          </Box>
-          <Box sx={{ padding: '16px 0' }}>
-            <Pagination total={getCommentsQuery.data?.pageCount || 0} value={page} onChange={count => {
-              setPage(count)
-            }} />
-          </Box>
-        </Stack>
-      </MainLayout>
-    </>
+              {comment.replies.commentCount > 0 && (
+                <Text size="xs" color="dimmed" sx={{ marginTop: 8 }}>
+                  {comment.replies.commentCount} repl{comment.replies.commentCount === 1 ? 'y' : 'ies'}
+                </Text>
+              )}
+            </Stack>
+            <Group sx={{
+            }}>
+              <CommentToolbar 
+                comment={comment} 
+                refetch={getCommentsQuery.refetch} 
+                currentPage={page} 
+              />
+            </Group>
+            </Stack>
+          </Group>
+        </List.Item>
+      ))}
+      {getCommentsQuery.data?.data.length === 0 && (
+        <Box p={'xl'} sx={{
+          backgroundColor: '#fff'
+        }}>
+          <Center>
+            <Text color="gray" size="sm">
+              No comments yet
+            </Text>
+          </Center>
+        </Box>
+      )}
+    </AdminPageLayout>
   )
 }
 
@@ -599,7 +581,6 @@ export async function getServerSideProps(ctx) {
     }
   }
 
-  const projects = await projectService.list()
 
   return {
     props: {

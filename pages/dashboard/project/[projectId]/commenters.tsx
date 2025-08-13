@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Checkbox, Loader, Overlay } from '@mantine/core'
+import { Anchor, Box, Button, Center, Group, List, Stack, Text, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { modals } from '@mantine/modals'
 import { isAdmin } from '../../../../utils/adminHelpers'
@@ -9,8 +9,7 @@ import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
-import { MainLayout } from '../../../../components/Layout'
-import { AdminControlBar } from '../../../../components/AdminControlBar'
+import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { UserSession } from '../../../../service'
 import { CommentItem } from '../../../../service/comment.service'
 import { ProjectService } from '../../../../service/project.service'
@@ -177,117 +176,101 @@ function CommentersPage(props: {
   }
 
   return (
-    <>
-      <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isLoading}>
-        <Stack sx={{ height: '100vh', maxHeight: 'calc(100vh - 200px)' }}>
-          <AdminControlBar
-            selectedCount={selectedEmails.length}
-            totalCount={filteredCommenters.length}
-            onSelectAll={selectAllOnPage}
-            onClearSelection={clearSelection}
-            buttons={controlBarButtons}
-            showAdminFilter={true}
-            hideAdminPosts={hideAdminPosts}
-            onToggleAdminFilter={setHideAdminPosts}
-            globalCount={getCommentersQuery.data?.total}
-            currentPage={page}
-            totalPages={getCommentersQuery.data?.pageCount}
-          />
-          <Box sx={{ flex: 1, overflow: 'auto' }}>
-            <List listStyleType={'none'} styles={{
-              root: {
-                border: '1px solid #eee'
-              },
-              item: {
-                backgroundColor: '#fff',
-                padding: 12,
-                ':not(:last-child)': {
-                  borderBottom: '1px solid #eee',
-                }
-              }
-            }}>
-              {filteredCommenters.map(commenter => {
-              return (
-                <List.Item key={commenter.email}>
-                  <Group align="flex-start" spacing={12}>
-                    <Checkbox aria-label="Select commenter" checked={isSelected(commenter.email)} onChange={() => toggleSelected(commenter.email)} />
-                    <Stack sx={{ flex: 1 }}>
-                      <Group spacing={8} sx={{
-                        fontSize: 14
-                      }}>
-                        <Text sx={{
-                          fontWeight: 500
-                        }}>
-                          {commenter.nickname}
-                        </Text>
-                        {isAdmin(commenter) && <MODFlag />}
-                        <Text sx={{
-                          fontWeight: 400,
-                          color: 'gray'
-                        }}>
-                          {commenter.email}
-                        </Text>
-                        <Text sx={{
-                          fontSize: 12,
-                          color: 'dimmed'
-                        }}>
-                          ({commenter.commentCount} comment{commenter.commentCount !== 1 ? 's' : ''})
-                        </Text>
-                      </Group>
-                      
-                      {/* Show recent comments */}
-                      <Stack spacing={8} sx={{ marginLeft: 16 }}>
-                        {commenter.comments.slice(0, 3).map(comment => (
-                          <Box key={comment.id} sx={{ 
-                            padding: 8, 
-                            backgroundColor: '#f8f9fa', 
-                            borderRadius: 4,
-                            fontSize: 12
-                          }}>
-                            <Group spacing={4}>
-                              <Text sx={{ fontWeight: 500 }}>
-                                {comment.parsedCreatedAt}
-                              </Text>
-                              <Text>on</Text>
-                              <Anchor href={comment.page.url} target="_blank" size="sm">{comment.page.slug}</Anchor>
-                            </Group>
-                            <Text sx={{ marginTop: 4 }}>
-                              {comment.content.length > 100 ? comment.content.substring(0, 100) + '...' : comment.content}
-                            </Text>
-                          </Box>
-                        ))}
-                        {commenter.commentCount > 3 && (
-                          <Text size="xs" color="dimmed">
-                            ... and {commenter.commentCount - 3} more comment{commenter.commentCount - 3 !== 1 ? 's' : ''}
-                          </Text>
-                        )}
-                      </Stack>
-                    </Stack>
-                  </Group>
-                </List.Item>
-              )
-              })}
-            </List>
-            {getCommentersQuery.data?.data.length === 0 && (
-              <Box p={'xl'} sx={{
-                backgroundColor: '#fff'
+    <AdminPageLayout
+      id="commenters"
+      project={props.project}
+      mainLayoutData={props.mainLayoutData}
+      isLoading={getCommentersQuery.isLoading}
+      controlBar={{
+        selectedCount: selectedEmails.length,
+        totalCount: filteredCommenters.length,
+        onSelectAll: selectAllOnPage,
+        onClearSelection: clearSelection,
+        buttons: controlBarButtons,
+        showAdminFilter: true,
+        hideAdminPosts,
+        onToggleAdminFilter: setHideAdminPosts,
+        globalCount: getCommentersQuery.data?.total,
+        currentPage: page,
+        totalPages: getCommentersQuery.data?.pageCount || 0
+      }}
+      pagination={{
+        total: getCommentersQuery.data?.pageCount || 0,
+        value: page,
+        onChange: setPage
+      }}
+    >
+      {filteredCommenters.map(commenter => (
+        <List.Item key={commenter.email}>
+          <Group align="flex-start" spacing={12}>
+            <Checkbox aria-label="Select commenter" checked={isSelected(commenter.email)} onChange={() => toggleSelected(commenter.email)} />
+            <Stack sx={{ flex: 1 }}>
+              <Group spacing={8} sx={{
+                fontSize: 14
               }}>
-                <Center>
-                  <Text color="gray" size="sm">
-                    No commenters yet
+                <Text sx={{
+                  fontWeight: 500
+                }}>
+                  {commenter.nickname}
+                </Text>
+                {isAdmin(commenter) && <MODFlag />}
+                <Text sx={{
+                  fontWeight: 400,
+                  color: 'gray'
+                }}>
+                  {commenter.email}
+                </Text>
+                <Text sx={{
+                  fontSize: 12,
+                  color: 'dimmed'
+                }}>
+                  ({commenter.commentCount} comment{commenter.commentCount !== 1 ? 's' : ''})
+                </Text>
+              </Group>
+              
+              {/* Show recent comments */}
+              <Stack spacing={8} sx={{ marginLeft: 16 }}>
+                {commenter.comments.slice(0, 3).map(comment => (
+                  <Box key={comment.id} sx={{ 
+                    padding: 8, 
+                    backgroundColor: '#f8f9fa', 
+                    borderRadius: 4,
+                    fontSize: 12
+                  }}>
+                    <Group spacing={4}>
+                      <Text sx={{ fontWeight: 500 }}>
+                        {comment.parsedCreatedAt}
+                      </Text>
+                      <Text>on</Text>
+                      <Anchor href={comment.page.url} target="_blank" size="sm">{comment.page.slug}</Anchor>
+                    </Group>
+                    <Text sx={{ marginTop: 4 }}>
+                      {comment.content.length > 100 ? comment.content.substring(0, 100) + '...' : comment.content}
+                    </Text>
+                  </Box>
+                ))}
+                {commenter.commentCount > 3 && (
+                  <Text size="xs" color="dimmed">
+                    ... and {commenter.commentCount - 3} more comment{commenter.commentCount - 3 !== 1 ? 's' : ''}
                   </Text>
-                </Center>
-              </Box>
-            )}
-          </Box>
-          <Box sx={{ padding: '16px 0' }}>
-            <Pagination total={getCommentersQuery.data?.pageCount || 0} value={page} onChange={count => {
-              setPage(count)
-            }} />
-          </Box>
-        </Stack>
-      </MainLayout>
-    </>
+                )}
+              </Stack>
+            </Stack>
+          </Group>
+        </List.Item>
+      ))}
+      {getCommentersQuery.data?.data.length === 0 && (
+        <Box p={'xl'} sx={{
+          backgroundColor: '#fff'
+        }}>
+          <Center>
+            <Text color="gray" size="sm">
+              No commenters yet
+            </Text>
+          </Center>
+        </Box>
+      )}
+    </AdminPageLayout>
   )
 }
 
