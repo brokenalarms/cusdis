@@ -5,7 +5,7 @@ import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { AiOutlineCheck, AiOutlineSmile } from 'react-icons/ai'
-import { useMutation, useQuery } from 'react-query'
+import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { MainLayout } from '../../../../components/Layout'
 import { AdminControlBar } from '../../../../components/AdminControlBar'
 import { UserSession } from '../../../../service'
@@ -27,18 +27,22 @@ const getComments = async ({ queryKey }) => {
   return res.data.data
 }
 
-const approveComment = async ({ commentId }) => {
-  const res = await apiClient.post(`/comment/${commentId}/approve`)
+const approveComments = async ({ commentIds }) => {
+  const res = await apiClient.post('/comment/approve', {
+    commentIds
+  })
   return res.data
 }
 
-const deleteComment = async ({ commentId }) => {
-  const res = await apiClient.delete(`/comment/${commentId}`)
+const unapproveComments = async ({ commentIds }) => {
+  const res = await apiClient.post('/comment/unapprove', {
+    commentIds
+  })
   return res.data
 }
 
-const batchDeleteComments = async ({ commentIds }) => {
-  const res = await apiClient.delete('/comments/batch-delete', {
+const deleteComments = async ({ commentIds }) => {
+  const res = await apiClient.delete('/comment/delete', {
     data: { commentIds }
   })
   return res.data
@@ -66,24 +70,82 @@ const updateProjectSettings = async ({ projectId, body }) => {
 function CommentToolbar(props: {
   comment: CommentItem,
   refetch: any,
+  currentPage: number,
 }) {
-
+  const queryClient = useQueryClient()
+  const router = useRouter()
   const [replyContent, setReplyContent] = React.useState("")
   const [isOpenReplyForm, setIsOpenReplyForm] = React.useState(false)
 
-  const approveCommentMutation = useMutation(approveComment, {
-    onSuccess() {
-      props.refetch()
-    },
-    onError(data: any) {
-      const {
-        error: message,
-        status: statusCode
-      } = data.response.data
+  const approveCommentMutation = useMutation((data: { commentId: string }) => approveComments({ commentIds: [data.commentId] }), {
+    onMutate: async ({ commentId }) => {
+      // Cancel any outgoing refetches
+      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
+      await queryClient.cancelQueries(queryKey)
 
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.map(comment =>
+            comment.id === commentId ? { ...comment, approved: true } : comment
+          )
+        }
+      })
+
+      return { previousComments, queryKey }
+    },
+    onError: (err, { commentId }, context) => {
+      // Revert the optimistic update on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(context.queryKey, context.previousComments)
+      }
+      // Refetch to ensure consistency after error
+      props.refetch()
       notifications.show({
         title: "Error",
-        message,
+        message: 'Failed to approve comment',
+        color: 'yellow'
+      })
+    }
+  })
+
+  const unapproveCommentMutation = useMutation((data: { commentId: string }) => unapproveComments({ commentIds: [data.commentId] }), {
+    onMutate: async ({ commentId }) => {
+      // Cancel any outgoing refetches
+      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
+      await queryClient.cancelQueries(queryKey)
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.map(comment =>
+            comment.id === commentId ? { ...comment, approved: false } : comment
+          )
+        }
+      })
+
+      return { previousComments, queryKey }
+    },
+    onError: (err, { commentId }, context) => {
+      // Revert the optimistic update on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(context.queryKey, context.previousComments)
+      }
+      // Refetch to ensure consistency after error
+      props.refetch()
+      notifications.show({
+        title: "Error",
+        message: 'Failed to unapprove comment',
         color: 'yellow'
       })
     }
@@ -94,7 +156,7 @@ function CommentToolbar(props: {
       props.refetch()
     }
   })
-  const deleteCommentMutation = useMutation(deleteComment, {
+  const deleteCommentMutation = useMutation((data: { commentId: string }) => deleteComments({ commentIds: [data.commentId] }), {
     onSuccess() {
       props.refetch()
     }
@@ -104,16 +166,25 @@ function CommentToolbar(props: {
     <Stack>
       <Group spacing={4}>
         {props.comment.approved ? (
-          <Button leftIcon={<AiOutlineCheck />} color="green" size="xs" variant={'light'}>
+          <Button 
+            loading={unapproveCommentMutation.isLoading} 
+            onClick={_ => {
+              unapproveCommentMutation.mutate({
+                commentId: props.comment.id
+              })
+            }} 
+            leftIcon={<AiOutlineCheck />} 
+            color="green" 
+            size="xs" 
+            variant={'light'}
+          >
             Approved
           </Button>
         ) : (
           <Button loading={approveCommentMutation.isLoading} onClick={_ => {
-            // if (window.confirm("Are you sure you want to approve this comment?")) {
-              approveCommentMutation.mutate({
-                commentId: props.comment.id
-              })
-            // }
+            approveCommentMutation.mutate({
+              commentId: props.comment.id
+            })
           }} leftIcon={<AiOutlineSmile />} size="xs" variant={'subtle'}>
             Approve
           </Button>
@@ -191,36 +262,34 @@ function ProjectPage(props: {
   
   const clearSelection = () => setSelectedCommentIds([])
 
-  // Batch approve handler uses existing approveComment()
+  // Batch approve handler
   const [isBatchApproving, setIsBatchApproving] = React.useState(false)
   const handleBatchApprove = async () => {
     if (selectedCommentIds.length === 0) return
     setIsBatchApproving(true)
     try {
-      await Promise.all(selectedCommentIds.map((id) => approveComment({ commentId: id })))
-      notifications.show({ title: 'Approved', message: `Approved ${selectedCommentIds.length} comment(s)`, color: 'green' })
+      const result = await approveComments({ commentIds: selectedCommentIds })
+      notifications.show({ title: 'Approved', message: `Approved ${result.approved} comment(s)`, color: 'green' })
       setSelectedCommentIds([])
       await getCommentsQuery.refetch()
     } catch (e) {
-      notifications.show({ title: 'Error', message: 'Some approvals may have failed', color: 'red' })
+      notifications.show({ title: 'Error', message: 'Approval failed', color: 'red' })
     } finally {
       setIsBatchApproving(false)
     }
   }
 
-  // Batch delete handler uses new batch API
+  // Batch delete handler
   const [isBatchDeleting, setIsBatchDeleting] = React.useState(false)
   const handleBatchDelete = async () => {
     if (selectedCommentIds.length === 0) return
     setIsBatchDeleting(true)
     try {
-      const result = await batchDeleteComments({ commentIds: selectedCommentIds })
-      const { deleted, requested } = result
-      const failed = requested - deleted
+      const result = await deleteComments({ commentIds: selectedCommentIds })
       notifications.show({
-        title: failed ? 'Partially deleted' : 'Deleted',
-        message: failed ? `Deleted ${deleted}, failed ${failed}` : `Deleted ${deleted} comment(s)`,
-        color: failed ? 'yellow' : 'red'
+        title: 'Deleted',
+        message: `Deleted ${result.deleted} comment(s)`,
+        color: 'red'
       })
       setSelectedCommentIds([])
       await getCommentsQuery.refetch()
@@ -265,7 +334,7 @@ function ProjectPage(props: {
 
   return (
     <>
-      <MainLayout id="comments" project={props.project} {...props.mainLayoutData} isLoading={getCommentsQuery.isFetching}>
+      <MainLayout id="comments" project={props.project} {...props.mainLayoutData}>
         <Stack>
           <AdminControlBar
             selectedCount={selectedCommentIds.length}
@@ -337,7 +406,7 @@ function ProjectPage(props: {
                     </Stack>
                     <Group sx={{
                     }}>
-                      <CommentToolbar comment={comment} refetch={getCommentsQuery.refetch} />
+                      <CommentToolbar comment={comment} refetch={getCommentsQuery.refetch} currentPage={page} />
                     </Group>
                     </Stack>
                   </Group>

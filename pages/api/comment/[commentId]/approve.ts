@@ -35,7 +35,7 @@ export default async function handler(
     //   return
     // }
 
-    await commentService.approve(commentId)
+    await commentService.approve([commentId])
     await usageService.incr(UsageLabel.ApproveComment)
 
     res.json({

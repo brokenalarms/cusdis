@@ -26,13 +26,17 @@ const getDeletedComments = async ({ queryKey }) => {
   return res.data.data
 }
 
-const cascadeHardDelete = async ({ commentId }) => {
-  const res = await apiClient.delete(`/comment/${commentId}/cascade-hard-delete`)
+const hardDeleteComments = async ({ commentIds }) => {
+  const res = await apiClient.delete('/comment/hard-delete', {
+    data: { commentIds }
+  })
   return res.data
 }
 
-const cascadeRestore = async ({ commentId }) => {
-  const res = await apiClient.post(`/comment/${commentId}/cascade-restore`)
+const restoreComments = async ({ commentIds }) => {
+  const res = await apiClient.post('/comment/restore', {
+    commentIds
+  })
   return res.data
 }
 
@@ -76,14 +80,10 @@ function DeletedCommentsPage(props: {
     if (selectedCommentIds.length === 0) return
     setIsBatchHardDeleting(true)
     try {
-      let totalDeleted = 0
-      await Promise.all(selectedCommentIds.map(async (id) => {
-        const result = await cascadeHardDelete({ commentId: id })
-        totalDeleted += result.deletedCount
-      }))
+      const result = await hardDeleteComments({ commentIds: selectedCommentIds })
       notifications.show({
         title: 'Permanently Deleted',
-        message: `Permanently deleted ${totalDeleted} comment(s) and replies`,
+        message: `Permanently deleted ${result.deletedCount} comment(s) and replies`,
         color: 'red'
       })
       setSelectedCommentIds([])
@@ -101,14 +101,10 @@ function DeletedCommentsPage(props: {
     if (selectedCommentIds.length === 0) return
     setIsBatchRestoring(true)
     try {
-      let totalRestored = 0
-      await Promise.all(selectedCommentIds.map(async (id) => {
-        const result = await cascadeRestore({ commentId: id })
-        totalRestored += result.restoredCount
-      }))
+      const result = await restoreComments({ commentIds: selectedCommentIds })
       notifications.show({
         title: 'Restored',
-        message: `Restored ${totalRestored} comment(s) and replies`,
+        message: `Restored ${result.restored} comment(s)`,
         color: 'green'
       })
       setSelectedCommentIds([])

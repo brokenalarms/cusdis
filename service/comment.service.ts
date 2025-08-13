@@ -355,50 +355,51 @@ export class CommentService extends RequestScopeService {
     return this.formatComment(created, 0)
   }
 
-  async approve(commentId: string) {
-    const comment = await prisma.comment.findUnique({
-      where: { id: commentId },
-      select: { parentId: true, by_email: true },
-    })
+  async approve(commentIds: string | string[]) {
+    const ids = Array.isArray(commentIds) ? commentIds : [commentIds]
+    if (ids.length === 0) return
 
-    await prisma.comment.update({
-      where: {
-        id: commentId,
-      },
-      data: {
-        approved: true,
-      },
-    })
-
-    // Admin approval also verifies the email (upsert handles case where User record doesn't exist yet)
-    if (comment?.by_email) {
-      await prisma.user.upsert({
-        where: { email: comment.by_email },
-        update: { emailVerified: new Date() },
-        create: { email: comment.by_email, emailVerified: new Date() },
+    await prisma.$transaction(async (tx) => {
+      // Get all comments with their details
+      const comments = await tx.comment.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, parentId: true, by_email: true }
       })
-    }
 
-    await this.hookService.approveComment(commentId, comment?.parentId)
-    statService.capture('comment_approve')
-  }
+      // Update all comments to approved
+      await tx.comment.updateMany({
+        where: { id: { in: ids } },
+        data: { approved: true }
+      })
 
-  async delete(commentId: string) {
-    await prisma.comment.update({
-      where: {
-        id: commentId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+      // Handle email verification for all unique emails
+      const uniqueEmails = [...new Set(comments.map(c => c.by_email).filter(Boolean))]
+      for (const email of uniqueEmails) {
+        await tx.user.upsert({
+          where: { email },
+          update: { emailVerified: new Date() },
+          create: { email, emailVerified: new Date() }
+        })
+      }
+
+      // Trigger hooks for each comment (outside transaction since hooks may have side effects)
+      return comments
+    }).then(async (comments) => {
+      for (const comment of comments) {
+        await this.hookService.approveComment(comment.id, comment.parentId)
+        statService.capture('comment_approve')
+      }
     })
   }
 
-  async batchDelete(commentIds: string[]) {
+  async delete(commentIds: string | string[]) {
+    const ids = Array.isArray(commentIds) ? commentIds : [commentIds]
+    if (ids.length === 0) return 0
+
     const result = await prisma.comment.updateMany({
       where: {
         id: {
-          in: commentIds,
+          in: ids,
         },
       },
       data: {
@@ -537,5 +538,53 @@ export class CommentService extends RequestScopeService {
       pageSize,
       pageCount,
     }
+  }
+
+  async cascadeHardDelete(commentIds: string | string[]): Promise<{ deletedCount: number }> {
+    const ids = Array.isArray(commentIds) ? commentIds : [commentIds]
+    if (ids.length === 0) return { deletedCount: 0 }
+
+    // First, find all replies to these comments (recursively)
+    const findAllReplies = async (parentIds: string[]): Promise<string[]> => {
+      if (parentIds.length === 0) return []
+      
+      const replies = await prisma.comment.findMany({
+        where: { parentId: { in: parentIds } },
+        select: { id: true }
+      })
+      
+      const replyIds = replies.map(reply => reply.id)
+      
+      // Recursively get replies to these replies
+      if (replyIds.length > 0) {
+        const nestedReplies = await findAllReplies(replyIds)
+        replyIds.push(...nestedReplies)
+      }
+      
+      return replyIds
+    }
+
+    // Get all reply IDs for all parent comments
+    const allReplyIds = await findAllReplies(ids)
+    const allIdsToDelete = [...ids, ...allReplyIds]
+
+    // Hard delete all comments (parents + all descendants)
+    const result = await prisma.comment.deleteMany({
+      where: {
+        id: { in: allIdsToDelete }
+      }
+    })
+
+    return { deletedCount: result.count }
+  }
+
+  async unapprove(commentIds: string | string[]) {
+    const ids = Array.isArray(commentIds) ? commentIds : [commentIds]
+    if (ids.length === 0) return
+
+    await prisma.comment.updateMany({
+      where: { id: { in: ids } },
+      data: { approved: false }
+    })
   }
 }
