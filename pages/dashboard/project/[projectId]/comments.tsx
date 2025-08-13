@@ -1,6 +1,9 @@
 import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Textarea, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { modals } from '@mantine/modals'
+import { isAdmin } from '../../../../utils/adminHelpers'
+import { MODFlag } from '../../../../components/MODFlag'
+import { useAdminFilter } from '../../../../hooks/useAdminFilter'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
@@ -263,7 +266,9 @@ function CommentToolbar(props: {
               parentId: props.comment.id,
               content: replyContent
             })
-          }} disabled={replyContent.length === 0} size="xs">Reply and approve</Button>
+          }} disabled={replyContent.length === 0} size="xs">
+            {props.comment.approved ? 'Reply' : 'Reply and approve'}
+          </Button>
         </Stack>
       }
     </Stack>
@@ -301,8 +306,9 @@ function ProjectPage(props: {
     setSelectedCommentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
-  // Admin filter state
-  const [hideAdminPosts, setHideAdminPosts] = React.useState(false)
+  // Admin filtering using reusable hook
+  const allComments = getCommentsQuery.data?.data || []
+  const { hideAdminPosts, setHideAdminPosts, filteredItems: filteredComments } = useAdminFilter(allComments)
   
   const clearSelection = () => setSelectedCommentIds([])
 
@@ -430,12 +436,6 @@ function ProjectPage(props: {
     },
   ]
 
-  // Apply admin filtering
-  const allComments = getCommentsQuery.data?.data || []
-  const filteredComments = hideAdminPosts 
-    ? allComments.filter(comment => !comment.moderatorId)
-    : allComments
-
   const selectAllOnPage = () => {
     const ids = filteredComments.map((c) => c.id)
     setSelectedCommentIds(ids)
@@ -486,15 +486,7 @@ function ProjectPage(props: {
                         }}>
                           {comment.by_nickname}
                         </Text>
-                        {comment.moderatorId && (
-                          <Text sx={{
-                            fontWeight: 500,
-                            color: 'blue',
-                            fontSize: 11
-                          }}>
-                            MOD
-                          </Text>
-                        )}
+                        {isAdmin(comment) && <MODFlag />}
                         <Text sx={{
                           fontWeight: 400,
                           color: 'gray'

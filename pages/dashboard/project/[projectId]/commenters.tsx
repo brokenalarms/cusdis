@@ -1,6 +1,9 @@
 import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Checkbox, Loader, Overlay } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { modals } from '@mantine/modals'
+import { isAdmin } from '../../../../utils/adminHelpers'
+import { MODFlag } from '../../../../components/MODFlag'
+import { useAdminFilter } from '../../../../hooks/useAdminFilter'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
@@ -78,8 +81,9 @@ function CommentersPage(props: {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(x => x !== email) : [...prev, email])
   }
 
-  // Admin filter state
-  const [hideAdminPosts, setHideAdminPosts] = React.useState(false)
+  // Admin filtering using reusable hook
+  const allCommenters = getCommentersQuery.data?.data || []
+  const { hideAdminPosts, setHideAdminPosts, filteredItems: filteredCommenters } = useAdminFilter(allCommenters)
   const clearSelection = () => setSelectedEmails([])
 
   // Batch delete by email handler
@@ -166,11 +170,6 @@ function CommentersPage(props: {
     },
   ]
 
-  // Apply admin filtering
-  const allCommenters = getCommentersQuery.data?.data || []
-  const filteredCommenters = hideAdminPosts 
-    ? allCommenters.filter(commenter => !commenter.isAdmin)
-    : allCommenters
 
   const selectAllOnPage = () => {
     const emails = filteredCommenters.map((c) => c.email)
@@ -220,6 +219,7 @@ function CommentersPage(props: {
                         }}>
                           {commenter.nickname}
                         </Text>
+                        {isAdmin(commenter) && <MODFlag />}
                         <Text sx={{
                           fontWeight: 400,
                           color: 'gray'

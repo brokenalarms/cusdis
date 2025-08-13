@@ -1,6 +1,9 @@
 import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { modals } from '@mantine/modals'
+import { isAdmin } from '../../../../utils/adminHelpers'
+import { MODFlag } from '../../../../components/MODFlag'
+import { useAdminFilter } from '../../../../hooks/useAdminFilter'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
@@ -68,6 +71,11 @@ function DeletedCommentsPage(props: {
   // Selection state for batch actions
   const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([])
   
+  // Admin filtering using reusable hook
+  const allComments = getDeletedCommentsQuery.data?.data || []
+  console.log('🔍 All deleted comments:', allComments.length, 'Admin comments:', allComments.filter(c => c.moderatorId).length)
+  const { hideAdminPosts, setHideAdminPosts, filteredItems: filteredComments } = useAdminFilter(allComments)
+  
   // Individual action mutations
   const restoreCommentMutation = useMutation((data: { commentId: string }) => restoreComments({ commentIds: [data.commentId] }), {
     onSuccess: (result, { commentId }) => {
@@ -127,7 +135,7 @@ function DeletedCommentsPage(props: {
     setSelectedCommentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
   const selectAllOnPage = () => {
-    const ids = getDeletedCommentsQuery.data?.data?.map((c) => c.id) || []
+    const ids = filteredComments.map((c) => c.id)
     setSelectedCommentIds(ids)
   }
   const clearSelection = () => setSelectedCommentIds([])
@@ -248,10 +256,13 @@ function DeletedCommentsPage(props: {
         <Stack>
           <AdminControlBar
             selectedCount={selectedCommentIds.length}
-            totalCount={getDeletedCommentsQuery.data?.data?.length || 0}
+            totalCount={filteredComments.length}
             onSelectAll={selectAllOnPage}
             onClearSelection={clearSelection}
             buttons={controlBarButtons}
+            showAdminFilter={true}
+            hideAdminPosts={hideAdminPosts}
+            onToggleAdminFilter={setHideAdminPosts}
             globalCount={getDeletedCommentsQuery.data?.commentCount}
             currentPage={page}
             totalPages={getDeletedCommentsQuery.data?.pageCount}
@@ -268,7 +279,7 @@ function DeletedCommentsPage(props: {
               }
             }
           }}>
-            {getDeletedCommentsQuery.data?.data.map(comment => {
+            {filteredComments.map(comment => {
               return (
                 <List.Item key={comment.id}>
                   <Group align="flex-start" spacing={12}>
@@ -284,15 +295,7 @@ function DeletedCommentsPage(props: {
                           }}>
                             [DELETED] {comment.by_nickname}
                           </Text>
-                          {comment.moderatorId && (
-                            <Text sx={{
-                              fontWeight: 500,
-                              color: 'blue',
-                              fontSize: 11
-                            }}>
-                              MOD
-                            </Text>
-                          )}
+                          {isAdmin(comment) && <MODFlag />}
                           <Text sx={{
                             fontWeight: 400,
                             color: 'gray'
@@ -382,7 +385,7 @@ function DeletedCommentsPage(props: {
               )
             })}
           </List>
-          {getDeletedCommentsQuery.data?.data.length === 0 && (
+          {filteredComments.length === 0 && (
             <Box p={'xl'} sx={{
               backgroundColor: '#fff'
             }}>
