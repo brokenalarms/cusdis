@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "react-query"
 import { useRouter } from "next/router"
 import { AiOutlineLogout, AiOutlineSetting, AiOutlineFileText, AiOutlineAlert, AiOutlinePlus, AiOutlineComment, AiOutlineCode, AiOutlineRight, AiOutlineDown, AiOutlineFile, AiOutlineQuestion, AiOutlineQuestionCircle } from 'react-icons/ai'
 import { signout, signOut } from "next-auth/client"
-import { Anchor, AppShell, Avatar, Badge, Box, Button, Code, Grid, Group, Header, List, Menu, Modal, Navbar, NavLink, Paper, Progress, ScrollArea, Select, Space, Stack, Switch, Text, TextInput, Title } from "@mantine/core"
+import { Anchor, AppShell, Avatar, Badge, Box, Button, Code, Grid, Group, Header, List, Menu, Modal, Navbar, NavLink, Paper, Progress, ScrollArea, Select, Space, Stack, Switch, Text, TextInput, Title, Loader, Overlay } from "@mantine/core"
 import Link from "next/link"
 import type { ProjectServerSideProps } from "../pages/dashboard/project/[projectId]/settings"
 import { modals } from "@mantine/modals"
@@ -42,6 +42,7 @@ export function MainLayout(props: {
   children?: any,
   id: 'comments' | 'commenters' | 'settings'
   project: ProjectServerSideProps,
+  isLoading?: boolean
 } & MainLayoutData) {
 
   const router = useRouter()
@@ -172,7 +173,7 @@ export function MainLayout(props: {
     return (
       <Stack>
         <Stack spacing={8} p="sm">
-          <Link href={`/dashboard/project/${projectId}`} style={{ textDecoration: 'none' }}>
+          <Link href={`/dashboard/project/${projectId}/comments`} style={{ textDecoration: 'none' }}>
             <NavLink active={props.id === "comments"} styles={styles} label="Comments" icon={<AiOutlineComment />}>
             </NavLink>
           </Link>
@@ -438,7 +439,24 @@ export function MainLayout(props: {
             </Button>
           </Stack>
         </Modal>
-        {props.children}
+        <Box sx={{ position: 'relative', minHeight: '100%' }}>
+          {props.isLoading && (
+            <Overlay opacity={0.6} color="#000">
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%',
+                flexDirection: 'column',
+                gap: 16
+              }}>
+                <Loader size="lg" />
+                <Text>Loading...</Text>
+              </Box>
+            </Overlay>
+          )}
+          {props.children}
+        </Box>
       </AppShell>
     </>
   )

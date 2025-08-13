@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Checkbox } from '@mantine/core'
+import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Checkbox, Loader, Overlay } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
@@ -112,7 +112,7 @@ function CommentersPage(props: {
 
   return (
     <>
-      <MainLayout id="commenters" project={props.project} {...props.mainLayoutData}>
+      <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isLoading}>
         <Stack>
           <Group position="apart">
             <Group spacing={8}>
