@@ -213,6 +213,15 @@ function DeletedCommentsPage(props: {
                           }}>
                             [DELETED] {comment.by_nickname}
                           </Text>
+                          {comment.moderatorId && (
+                            <Text sx={{
+                              fontWeight: 500,
+                              color: 'blue',
+                              fontSize: 11
+                            }}>
+                              MOD
+                            </Text>
+                          )}
                           <Text sx={{
                             fontWeight: 400,
                             color: 'gray'

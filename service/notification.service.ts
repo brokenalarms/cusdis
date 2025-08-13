@@ -229,18 +229,18 @@ export class NotificationService extends RequestScopeService {
     approveToken: string,
     unsubscribeToken: string,
   ) {
-    // Check if user has verified email
-    let emailVerified = false
+    // Check if commenter has verified their email
+    let commenterEmailVerified = false
     let isFirstComment = true
 
     if (comment.by_email) {
-      const user = await prisma.user.findUnique({
+      const commenter = await prisma.commenter.findUnique({
         where: { email: comment.by_email },
-        select: { emailVerified: true },
+        select: { verifiedAt: true },
       })
-      emailVerified = Boolean(user?.emailVerified)
+      commenterEmailVerified = Boolean(commenter?.verifiedAt)
 
-      // Check if they have any prior approved comments
+      // Check if the commenter has any prior approved comments
       const priorApproved = await prisma.comment.findFirst({
         where: {
           page: {
@@ -264,7 +264,7 @@ export class NotificationService extends RequestScopeService {
       unsubscribe_link: `${resolvedConfig.host}/api/open/unsubscribe?token=${unsubscribeToken}`,
       content: markdown.render(comment.content),
       notification_preferences_link: `${resolvedConfig.host}/user`,
-      email_verified: emailVerified,
+      email_verified: commenterEmailVerified,
       auto_approved: comment.approved,
       is_first_comment: isFirstComment,
     })

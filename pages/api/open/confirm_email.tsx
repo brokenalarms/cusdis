@@ -35,11 +35,11 @@ export default apiHandler()
         commentId?: string
       }
 
-      // Upsert user and set emailVerified
-      await prisma.user.upsert({
+      // Upsert commenter and set verifiedAt
+      await prisma.commenter.upsert({
         where: { email: payload.email },
-        update: { emailVerified: new Date() },
-        create: { email: payload.email, emailVerified: new Date() },
+        update: { verifiedAt: new Date() },
+        create: { email: payload.email, verifiedAt: new Date() },
       })
 
       // If a commentId is present, and there is already a previously approved comment

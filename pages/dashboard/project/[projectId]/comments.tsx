@@ -1,5 +1,6 @@
 import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Textarea, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { modals } from '@mantine/modals'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
@@ -92,7 +93,7 @@ function CommentToolbar(props: {
         return {
           ...old,
           data: old.data.map(comment =>
-            comment.id === commentId ? { ...comment, approved: true } : comment
+            comment.id === commentId ? { ...comment, approved: true, isEmailVerified: true } : comment
           )
         }
       })
@@ -151,10 +152,38 @@ function CommentToolbar(props: {
     }
   })
   const replyCommentMutation = useMutation(replyAsModerator, {
-    onSuccess() {
+    onMutate: async ({ parentId }) => {
+      // Cancel any outgoing refetches
+      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
+      await queryClient.cancelQueries(queryKey)
+
+      // Snapshot the previous value  
+      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+
+      return { previousComments, queryKey, parentId }
+    },
+    onSuccess: (result, { parentId }, context) => {
+      // Update parent comment to approved and verified after API success
+      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.map(comment =>
+            comment.id === parentId ? { ...comment, approved: true, isEmailVerified: true } : comment
+          )
+        }
+      })
+
       setIsOpenReplyForm(false)
-      // Note: Reply creates a new comment, so optimistic update is complex
-      // For now, just refetch since this is less common operation
+      // Refetch to get the new reply that was added
+      props.refetch()
+    },
+    onError: (err, { parentId }, context) => {
+      // Revert the optimistic update on error (if any was made)
+      if (context?.previousComments) {
+        queryClient.setQueryData(context.queryKey, context.previousComments)
+      }
       props.refetch()
     }
   })
@@ -214,9 +243,24 @@ function CommentToolbar(props: {
           </Button>
         ) : (
           <Button loading={approveCommentMutation.isLoading} onClick={_ => {
-            approveCommentMutation.mutate({
-              commentId: props.comment.id
-            })
+            if (props.comment.by_email && !props.comment.isEmailVerified) {
+              modals.openConfirmModal({
+                title: 'Approve unverified comment',
+                children: (
+                  <Text size="sm">
+                    This commenter hasn't verified their email address yet. Approving this comment will also verify their email address ({props.comment.by_email}) for future comments.
+                  </Text>
+                ),
+                labels: { confirm: 'Approve & Verify', cancel: 'Cancel' },
+                onConfirm: () => approveCommentMutation.mutate({
+                  commentId: props.comment.id
+                })
+              })
+            } else {
+              approveCommentMutation.mutate({
+                commentId: props.comment.id
+              })
+            }
           }} leftIcon={<AiOutlineSmile />} size="xs" variant={'subtle'}>
             Approve
           </Button>
@@ -299,6 +343,34 @@ function ProjectPage(props: {
   const [isBatchApproving, setIsBatchApproving] = React.useState(false)
   const handleBatchApprove = async () => {
     if (selectedCommentIds.length === 0) return
+    
+    // Check if any selected comments are from unverified emails
+    const selectedComments = filteredComments.filter(comment => selectedCommentIds.includes(comment.id))
+    const unverifiedComments = selectedComments.filter(comment => comment.by_email && !comment.isEmailVerified)
+    
+    if (unverifiedComments.length > 0) {
+      const unverifiedEmails = [...new Set(unverifiedComments.map(c => c.by_email))]
+      modals.openConfirmModal({
+        title: 'Approve comments with unverified emails',
+        children: (
+          <Stack spacing="xs">
+            <Text size="sm">
+              {unverifiedComments.length} of the selected comments are from unverified email addresses. Approving these comments will also verify the following email addresses for future comments:
+            </Text>
+            <Text size="sm" weight={500}>
+              {unverifiedEmails.join(', ')}
+            </Text>
+          </Stack>
+        ),
+        labels: { confirm: 'Approve & Verify All', cancel: 'Cancel' },
+        onConfirm: () => performBatchApprove()
+      })
+    } else {
+      performBatchApprove()
+    }
+  }
+
+  const performBatchApprove = async () => {
     setIsBatchApproving(true)
     
     // Optimistic update
@@ -310,7 +382,7 @@ function ProjectPage(props: {
       return {
         ...old,
         data: old.data.map(comment =>
-          selectedCommentIds.includes(comment.id) ? { ...comment, approved: true } : comment
+          selectedCommentIds.includes(comment.id) ? { ...comment, approved: true, isEmailVerified: true } : comment
         )
       }
     })
@@ -447,6 +519,15 @@ function ProjectPage(props: {
                         }}>
                           {comment.by_nickname}
                         </Text>
+                        {comment.moderatorId && (
+                          <Text sx={{
+                            fontWeight: 500,
+                            color: 'blue',
+                            fontSize: 11
+                          }}>
+                            MOD
+                          </Text>
+                        )}
                         <Text sx={{
                           fontWeight: 400,
                           color: 'gray'

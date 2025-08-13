@@ -44,6 +44,7 @@ model Session {
   @@map(name: "sessions")
 }
 
+// this is for ADMIN/MOD users, as opposed to Commenters who don't use the admin interface
 model User {
   id            String    @id @default(uuid())
   name          String?

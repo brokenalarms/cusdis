@@ -353,16 +353,35 @@ export class CommentService extends RequestScopeService {
       },
     })
 
-    const created = await prisma.comment.create({
-      data: {
-        content: content,
-        by_email: session.user.email,
-        by_nickname: session.user.name,
-        moderatorId: session.uid,
-        pageId: parent.pageId,
-        approved: true,
-        parentId,
-      },
+    const created = await prisma.$transaction(async (tx) => {
+      // Create the moderator reply
+      const created = await tx.comment.create({
+        data: {
+          content: content,
+          by_email: session.user.email,
+          by_nickname: session.user.name,
+          moderatorId: session.uid,
+          pageId: parent.pageId,
+          approved: true,
+          parentId,
+        },
+      })
+
+      // Approve the parent comment and verify the commenter's email (if they have one)
+      await tx.comment.update({
+        where: { id: parentId },
+        data: { approved: true }
+      })
+
+      if (parent.by_email) {
+        await tx.commenter.upsert({
+          where: { email: parent.by_email },
+          update: { verifiedAt: new Date() },
+          create: { email: parent.by_email, verifiedAt: new Date() }
+        })
+      }
+
+      return created
     })
 
     // Trigger reply notifications for moderator replies (since they're pre-approved)
@@ -392,10 +411,10 @@ export class CommentService extends RequestScopeService {
       // Handle email verification for all unique emails
       const uniqueEmails = [...new Set(comments.map(c => c.by_email).filter(Boolean))]
       for (const email of uniqueEmails) {
-        await tx.user.upsert({
+        await tx.commenter.upsert({
           where: { email },
-          update: { emailVerified: new Date() },
-          create: { email, emailVerified: new Date() }
+          update: { verifiedAt: new Date() },
+          create: { email, verifiedAt: new Date() }
         })
       }
 
