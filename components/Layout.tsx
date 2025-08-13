@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "react-query"
 import { useRouter } from "next/router"
 import { AiOutlineLogout, AiOutlineSetting, AiOutlineFileText, AiOutlineAlert, AiOutlinePlus, AiOutlineComment, AiOutlineCode, AiOutlineRight, AiOutlineDown, AiOutlineFile, AiOutlineQuestion, AiOutlineQuestionCircle } from 'react-icons/ai'
 import { signout, signOut } from "next-auth/client"
-import { Anchor, AppShell, Avatar, Badge, Box, Button, Code, Grid, Group, Header, List, Menu, Modal, Navbar, NavLink, Paper, Progress, ScrollArea, Select, Space, Stack, Switch, Text, TextInput, Title, Loader, Overlay } from "@mantine/core"
+import { Anchor, AppShell, Avatar, Badge, Box, Button, Code, Grid, Group, Header, List, Menu, Modal, Navbar, NavLink, Paper, Progress, ScrollArea, Select, Space, Stack, Switch, Text, TextInput, Title, Loader } from "@mantine/core"
 import Link from "next/link"
 import type { ProjectServerSideProps } from "../pages/dashboard/project/[projectId]/settings"
 import { modals } from "@mantine/modals"
@@ -48,6 +48,30 @@ export function MainLayout(props: {
   const router = useRouter()
   const clipboard = useClipboard()
   const [isUserPannelOpen, { open: openUserModal, close: closeUserModal }] = useDisclosure(false);
+  const [isNavigating, setIsNavigating] = React.useState(false)
+  const [pendingRoute, setPendingRoute] = React.useState<string | null>(null)
+
+  // Track navigation state
+  React.useEffect(() => {
+    const handleStart = (url: string) => {
+      setIsNavigating(true)
+      setPendingRoute(url)
+    }
+    const handleComplete = () => {
+      setIsNavigating(false)
+      setPendingRoute(null)
+    }
+
+    router.events.on('routeChangeStart', handleStart)
+    router.events.on('routeChangeComplete', handleComplete)
+    router.events.on('routeChangeError', handleComplete)
+
+    return () => {
+      router.events.off('routeChangeStart', handleStart)
+      router.events.off('routeChangeComplete', handleComplete)
+      router.events.off('routeChangeError', handleComplete)
+    }
+  }, [router])
 
   const userSettingsForm = useForm({
     defaultValues: {
@@ -170,19 +194,26 @@ export function MainLayout(props: {
         color: '#343A40'
       }
     }
+    
+    // Determine active state from current route or pending route for immediate feedback
+    const currentPath = pendingRoute || router.asPath
+    const isCommentsActive = currentPath.includes('/comments')
+    const isCommentersActive = currentPath.includes('/commenters') 
+    const isSettingsActive = currentPath.includes('/settings')
+    
     return (
       <Stack>
         <Stack spacing={8} p="sm">
           <Link href={`/dashboard/project/${projectId}/comments`} style={{ textDecoration: 'none' }}>
-            <NavLink active={props.id === "comments"} styles={styles} label="Comments" icon={<AiOutlineComment />}>
+            <NavLink active={isCommentsActive} styles={styles} label="Comments" icon={<AiOutlineComment />}>
             </NavLink>
           </Link>
           <Link href={`/dashboard/project/${projectId}/commenters`} style={{ textDecoration: 'none' }}>
-            <NavLink active={props.id === "commenters"} styles={styles} label="Commenters" icon={<AiOutlineComment />}>
+            <NavLink active={isCommentersActive} styles={styles} label="Commenters" icon={<AiOutlineComment />}>
             </NavLink>
           </Link>
           <Link href={`/dashboard/project/${projectId}/settings`} style={{ textDecoration: 'none' }}>
-            <NavLink active={props.id === 'settings'} styles={styles} label="Site settings" icon={<AiOutlineSetting />}>
+            <NavLink active={isSettingsActive} styles={styles} label="Site settings" icon={<AiOutlineSetting />}>
             </NavLink>
           </Link>
           <NavLink component="a" href="/doc" target={'_blank'} label="Documentation" icon={<AiOutlineFileText />}>
@@ -191,7 +222,7 @@ export function MainLayout(props: {
 
       </Stack>
     )
-  }, [])
+  }, [router.asPath, projectId, pendingRoute])
 
   const openEmbededCodeModal = React.useCallback(() => {
     const code = `<div id="cusdis_thread"
@@ -439,24 +470,21 @@ export function MainLayout(props: {
             </Button>
           </Stack>
         </Modal>
-        <Box sx={{ position: 'relative', minHeight: '100%' }}>
-          {props.isLoading && (
-            <Overlay opacity={0.6} color="#000">
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                height: '100%',
-                flexDirection: 'column',
-                gap: 16
-              }}>
-                <Loader size="lg" />
-                <Text>Loading...</Text>
-              </Box>
-            </Overlay>
-          )}
-          {props.children}
-        </Box>
+        {(isNavigating || props.isLoading) ? (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            height: 'calc(100vh - 48px)',
+            flexDirection: 'column',
+            gap: 16
+          }}>
+            <Loader size="lg" />
+            <Text>Loading...</Text>
+          </Box>
+        ) : (
+          props.children
+        )}
       </AppShell>
     </>
   )
