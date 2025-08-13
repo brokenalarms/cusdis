@@ -153,12 +153,44 @@ function CommentToolbar(props: {
   const replyCommentMutation = useMutation(replyAsModerator, {
     onSuccess() {
       setIsOpenReplyForm(false)
+      // Note: Reply creates a new comment, so optimistic update is complex
+      // For now, just refetch since this is less common operation
       props.refetch()
     }
   })
   const deleteCommentMutation = useMutation((data: { commentId: string }) => deleteComments({ commentIds: [data.commentId] }), {
-    onSuccess() {
+    onMutate: async ({ commentId }) => {
+      // Cancel any outgoing refetches
+      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
+      await queryClient.cancelQueries(queryKey)
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+
+      // Optimistically remove comment from UI
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.filter(comment => comment.id !== commentId),
+          commentCount: Math.max(0, old.commentCount - 1)
+        }
+      })
+
+      return { previousComments, queryKey }
+    },
+    onError: (err, { commentId }, context) => {
+      // Revert the optimistic update on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(context.queryKey, context.previousComments)
+      }
+      // Refetch to ensure consistency after error
       props.refetch()
+      notifications.show({
+        title: "Error",
+        message: 'Failed to delete comment',
+        color: 'red'
+      })
     }
   })
 
@@ -246,6 +278,7 @@ function ProjectPage(props: {
 
   const [page, setPage] = React.useState(1)
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const getCommentsQuery = useQuery(['getComments', { projectId: router.query.projectId as string, page }], getComments, {
   })
@@ -262,17 +295,36 @@ function ProjectPage(props: {
   
   const clearSelection = () => setSelectedCommentIds([])
 
-  // Batch approve handler
+  // Batch approve handler  
   const [isBatchApproving, setIsBatchApproving] = React.useState(false)
   const handleBatchApprove = async () => {
     if (selectedCommentIds.length === 0) return
     setIsBatchApproving(true)
+    
+    // Optimistic update
+    const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
+    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+    
+    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+      if (!old) return old
+      return {
+        ...old,
+        data: old.data.map(comment =>
+          selectedCommentIds.includes(comment.id) ? { ...comment, approved: true } : comment
+        )
+      }
+    })
+
     try {
       const result = await approveComments({ commentIds: selectedCommentIds })
       notifications.show({ title: 'Approved', message: `Approved ${result.approved} comment(s)`, color: 'green' })
       setSelectedCommentIds([])
-      await getCommentsQuery.refetch()
     } catch (e) {
+      // Revert optimistic update on error
+      if (previousComments) {
+        queryClient.setQueryData(queryKey, previousComments)
+      }
+      await getCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Approval failed', color: 'red' })
     } finally {
       setIsBatchApproving(false)
@@ -284,6 +336,20 @@ function ProjectPage(props: {
   const handleBatchDelete = async () => {
     if (selectedCommentIds.length === 0) return
     setIsBatchDeleting(true)
+    
+    // Optimistic update
+    const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
+    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+    
+    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+      if (!old) return old
+      return {
+        ...old,
+        data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
+        commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+      }
+    })
+
     try {
       const result = await deleteComments({ commentIds: selectedCommentIds })
       notifications.show({
@@ -292,8 +358,12 @@ function ProjectPage(props: {
         color: 'red'
       })
       setSelectedCommentIds([])
-      await getCommentsQuery.refetch()
     } catch (e) {
+      // Revert optimistic update on error
+      if (previousComments) {
+        queryClient.setQueryData(queryKey, previousComments)
+      }
+      await getCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })
     } finally {
       setIsBatchDeleting(false)
@@ -334,7 +404,7 @@ function ProjectPage(props: {
 
   return (
     <>
-      <MainLayout id="comments" project={props.project} {...props.mainLayoutData}>
+      <MainLayout id="comments" project={props.project} {...props.mainLayoutData} isLoading={getCommentsQuery.isLoading}>
         <Stack>
           <AdminControlBar
             selectedCount={selectedCommentIds.length}
@@ -345,6 +415,9 @@ function ProjectPage(props: {
             showAdminFilter={true}
             hideAdminPosts={hideAdminPosts}
             onToggleAdminFilter={setHideAdminPosts}
+            globalCount={commentCount}
+            currentPage={page}
+            totalPages={pageCount}
           />
           <List listStyleType={'none'} styles={{
             root: {

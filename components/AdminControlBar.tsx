@@ -18,6 +18,9 @@ interface AdminControlBarProps {
   showAdminFilter?: boolean
   hideAdminPosts?: boolean
   onToggleAdminFilter?: (checked: boolean) => void
+  globalCount?: number
+  currentPage?: number
+  totalPages?: number
 }
 
 export function AdminControlBar({
@@ -30,6 +33,9 @@ export function AdminControlBar({
   showAdminFilter = false,
   hideAdminPosts = false,
   onToggleAdminFilter,
+  globalCount,
+  currentPage,
+  totalPages,
 }: AdminControlBarProps) {
   return (
     <Group position="apart">
@@ -77,6 +83,9 @@ export function AdminControlBar({
         )}
         <Text size="xs" color="dimmed">
           {totalCount} items on this page
+          {globalCount && totalPages && totalPages > 1 && (
+            <>, {globalCount} total across {totalPages} pages</>
+          )}
         </Text>
       </Group>
     </Group>

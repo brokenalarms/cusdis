@@ -136,7 +136,7 @@ function DeletedCommentsPage(props: {
 
   return (
     <>
-      <MainLayout id="deleted-comments" project={props.project} {...props.mainLayoutData} isLoading={getDeletedCommentsQuery.isFetching}>
+      <MainLayout id="deleted-comments" project={props.project} {...props.mainLayoutData} isLoading={getDeletedCommentsQuery.isLoading}>
         <Stack>
           <AdminControlBar
             selectedCount={selectedCommentIds.length}
@@ -144,6 +144,9 @@ function DeletedCommentsPage(props: {
             onSelectAll={selectAllOnPage}
             onClearSelection={clearSelection}
             buttons={controlBarButtons}
+            globalCount={getDeletedCommentsQuery.data?.commentCount}
+            currentPage={page}
+            totalPages={getDeletedCommentsQuery.data?.pageCount}
           />
           <List listStyleType={'none'} styles={{
             root: {

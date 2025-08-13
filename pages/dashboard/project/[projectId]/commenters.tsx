@@ -136,7 +136,7 @@ function CommentersPage(props: {
 
   return (
     <>
-      <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isFetching}>
+      <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isLoading}>
         <Stack>
           <AdminControlBar
             selectedCount={selectedEmails.length}
@@ -147,6 +147,9 @@ function CommentersPage(props: {
             showAdminFilter={true}
             hideAdminPosts={hideAdminPosts}
             onToggleAdminFilter={setHideAdminPosts}
+            globalCount={getCommentersQuery.data?.total}
+            currentPage={page}
+            totalPages={getCommentersQuery.data?.pageCount}
           />
           <List listStyleType={'none'} styles={{
             root: {
