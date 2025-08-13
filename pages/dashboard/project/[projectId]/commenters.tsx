@@ -112,7 +112,7 @@ function CommentersPage(props: {
 
   return (
     <>
-      <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isLoading}>
+      <MainLayout id="commenters" project={props.project} {...props.mainLayoutData} isLoading={getCommentersQuery.isFetching}>
         <Stack>
           <Group position="apart">
             <Group spacing={8}>

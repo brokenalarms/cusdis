@@ -235,7 +235,7 @@ function ProjectPage(props: {
 
   return (
     <>
-      <MainLayout id="comments" project={props.project} {...props.mainLayoutData} isLoading={getCommentsQuery.isLoading}>
+      <MainLayout id="comments" project={props.project} {...props.mainLayoutData} isLoading={getCommentsQuery.isFetching}>
         <Stack>
           <Group position="apart">
             <Group spacing={8}>
