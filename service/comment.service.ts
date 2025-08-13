@@ -31,6 +31,7 @@ export type CommentItem = Comment & {
   replies: CommentWrapper
   parsedContent: string
   parsedCreatedAt: string
+  isEmailVerified?: boolean
 }
 
 export class CommentService extends RequestScopeService {
@@ -39,7 +40,7 @@ export class CommentService extends RequestScopeService {
   emailService = new EmailService()
   tokenService = new TokenService()
 
-  private formatComment(comment: Comment & Partial<{ replies: Comment[] }>, timezoneOffset: number = 0): CommentItem {
+  private formatComment(comment: Comment & Partial<{ replies: Comment[] }>, timezoneOffset: number = 0, verificationMap?: Map<string, boolean>): CommentItem {
     const parsedCreatedAt = dayjs
       .utc(comment.createdAt)
       .utcOffset(timezoneOffset)
@@ -58,6 +59,7 @@ export class CommentService extends RequestScopeService {
       content: displayContent,
       parsedContent,
       parsedCreatedAt,
+      isEmailVerified: comment.by_email ? verificationMap?.get(comment.by_email) ?? false : true, // Admin comments are considered verified
       replies: comment.replies || { data: [], commentCount: 0, pageSize: 0, pageCount: 0 }
     } as CommentItem
   }
@@ -171,6 +173,21 @@ export class CommentService extends RequestScopeService {
       }),
     ])
 
+    // Fetch verification status for all unique emails in the comments
+    const uniqueEmails = [...new Set(comments.flatMap(comment => 
+      [comment.by_email, ...(comment.replies || []).map(reply => reply.by_email)]
+        .filter(Boolean) as string[]
+    ))]
+    
+    const verifiedCommenters = await prisma.commenter.findMany({
+      where: { email: { in: uniqueEmails } },
+      select: { email: true, verifiedAt: true }
+    })
+    
+    const verificationMap = new Map(
+      verifiedCommenters.map(c => [c.email, Boolean(c.verifiedAt)])
+    )
+
     const pageCount = Math.ceil(commentCount / pageSize) || 1
     
     // Apply post-processing filtering only when includeDeletedParents is enabled
@@ -180,13 +197,13 @@ export class CommentService extends RequestScopeService {
     
     // Format comments - Prisma will have included replies if requested
     const formattedComments = filteredComments.map(comment => {
-      const formatted = this.formatComment(comment, timezoneOffset)
+      const formatted = this.formatComment(comment, timezoneOffset, verificationMap)
       
       if (options?.includeReplies && comment.replies) {
         // Recursively format nested replies that Prisma included
         const formatReplies = (replies: any[]): CommentItem[] => {
           return replies.map(reply => {
-            const formattedReply = this.formatComment(reply, timezoneOffset)
+            const formattedReply = this.formatComment(reply, timezoneOffset, verificationMap)
             if (reply.replies && reply.replies.length > 0) {
               formattedReply.replies = {
                 data: formatReplies(reply.replies),

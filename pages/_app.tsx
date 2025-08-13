@@ -24,7 +24,7 @@ export default function App({ Component, pageProps }) {
           primaryColor: 'gray'
         }} withGlobalStyles withNormalizeCSS>
           <ModalsProvider>
-            <Notifications position='top-center' />
+            <Notifications position='bottom-right' />
             <Component {...pageProps} />
           </ModalsProvider>
         </MantineProvider>

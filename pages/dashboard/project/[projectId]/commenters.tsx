@@ -4,7 +4,7 @@ import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
-import { useMutation, useQuery } from 'react-query'
+import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { MainLayout } from '../../../../components/Layout'
 import { AdminControlBar } from '../../../../components/AdminControlBar'
 import { UserSession } from '../../../../service'
@@ -79,36 +79,59 @@ function CommentersPage(props: {
 
   // Admin filter state
   const [hideAdminPosts, setHideAdminPosts] = React.useState(false)
-  
   const clearSelection = () => setSelectedEmails([])
 
   // Batch delete by email handler
-  const [isBatchDeleting, setIsBatchDeleting] = React.useState(false)
-  const handleBatchDeleteByEmail = async () => {
-    if (selectedEmails.length === 0) return
-    const totalComments = getCommentersQuery.data?.data
-      ?.filter(c => selectedEmails.includes(c.email))
-      ?.reduce((sum, c) => sum + c.commentCount, 0) || 0
-    
-    
-    setIsBatchDeleting(true)
-    try {
-      const result = await batchDeleteCommentsByEmail({ 
-        projectId: router.query.projectId as string, 
-        emails: selectedEmails 
-      })
-      notifications.show({
-        title: 'Deleted',
-        message: `Deleted all comments from ${selectedEmails.length} commenter(s)`,
-        color: 'red'
-      })
-      setSelectedEmails([])
-      await getCommentersQuery.refetch()
-    } catch (e) {
-      notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })
-    } finally {
-      setIsBatchDeleting(false)
+  const queryClient = useQueryClient()
+  const batchDeleteMutation = useMutation(
+    (data: { projectId: string, emails: string[] }) => batchDeleteCommentsByEmail(data),
+    {
+      onMutate: async ({ emails }) => {
+        // Cancel any outgoing refetches
+        const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page }]
+        await queryClient.cancelQueries(queryKey)
+
+        // Snapshot the previous value
+        const previousCommenters = queryClient.getQueryData<CommentersData>(queryKey)
+
+        // Optimistically update to the new value
+        queryClient.setQueryData<CommentersData>(queryKey, (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            data: old.data.filter(commenter => !emails.includes(commenter.email)),
+            total: Math.max(0, old.total - emails.length)
+          }
+        })
+
+        return { previousCommenters, queryKey }
+      },
+      onSuccess: (result, { emails }) => {
+        notifications.show({
+          title: 'Deleted',
+          message: `Deleted all comments from ${emails.length} commenter(s)`,
+          color: 'red'
+        })
+        setSelectedEmails([])
+      },
+      onError: (err, { emails }, context) => {
+        // Revert the optimistic update on error
+        if (context?.previousCommenters) {
+          queryClient.setQueryData(context.queryKey, context.previousCommenters)
+        }
+        // Refetch to ensure consistency after error
+        getCommentersQuery.refetch()
+        notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })
+      }
     }
+  )
+
+  const handleBatchDeleteByEmail = () => {
+    if (selectedEmails.length === 0) return
+    batchDeleteMutation.mutate({ 
+      projectId: router.query.projectId as string, 
+      emails: selectedEmails 
+    })
   }
 
   // Control bar buttons configuration
@@ -117,7 +140,7 @@ function CommentersPage(props: {
       label: `Delete All Comments from Selected (${selectedEmails.length})`,
       color: 'red',
       variant: 'light',
-      loading: isBatchDeleting,
+      loading: batchDeleteMutation.isLoading,
       disabled: selectedEmails.length === 0,
       onClick: handleBatchDeleteByEmail,
     },

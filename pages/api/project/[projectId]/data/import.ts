@@ -13,7 +13,7 @@ export const config = {
 export default withProjectAuth(async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
-  { session: _session, project, mainLayoutData: _mainLayoutData }
+  { session: _session, project },
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })

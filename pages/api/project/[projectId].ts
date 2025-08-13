@@ -3,7 +3,7 @@ import { ProjectService } from "../../../service/project.service";
 import { prisma } from "../../../utils.server";
 import { withProjectAuth } from "../../../utils/auth-wrappers";
 
-export default withProjectAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session: _session, project, mainLayoutData: _mainLayoutData }) {
+export default withProjectAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session: _session, project }) {
   if (req.method !== 'PUT' && req.method !== 'DELETE') {
     return res.status(405).json({ message: 'Method not allowed' })
   }

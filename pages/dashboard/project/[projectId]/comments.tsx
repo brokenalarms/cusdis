@@ -453,6 +453,15 @@ function ProjectPage(props: {
                         }}>
                           {comment.by_email}
                         </Text>
+                        {comment.by_email && !comment.isEmailVerified && (
+                          <Text sx={{
+                            fontWeight: 500,
+                            color: 'orange',
+                            fontSize: 11
+                          }}>
+                            UNVERIFIED
+                          </Text>
+                        )}
                       </Group>
                       <Group spacing={8} sx={{
                         fontSize: 12

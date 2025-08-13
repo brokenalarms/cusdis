@@ -5,7 +5,7 @@ import { withProjectAuth } from '../../../../../utils/auth-wrappers'
 export default withProjectAuth(async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
-  { session: _session, project, mainLayoutData: _mainLayoutData }
+  { session: _session, project },
 ) {
   if (req.method !== 'DELETE') {
     return res.status(405).json({ message: 'Method not allowed' })

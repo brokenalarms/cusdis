@@ -2,7 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { CommentService } from '../../../../service/comment.service'
 import { withProjectAuth } from '../../../../utils/auth-wrappers'
 
-export default withProjectAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session: _session, project, mainLayoutData: _mainLayoutData }) {
+export default withProjectAuth(async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  { session: _session, project },
+) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
@@ -11,8 +15,10 @@ export default withProjectAuth(async function handler(req: NextApiRequest, res: 
 
   try {
     const page = parseInt(req.query.page as string) || 1
-    const timezoneOffset = req.headers['x-timezone-offset'] ? parseInt(req.headers['x-timezone-offset'] as string) : 0
-    
+    const timezoneOffset = req.headers['x-timezone-offset']
+      ? parseInt(req.headers['x-timezone-offset'] as string)
+      : 0
+
     // Use the new getDeletedComments method
     const deletedComments = await commentService.getDeletedComments(
       project.id,
@@ -21,7 +27,7 @@ export default withProjectAuth(async function handler(req: NextApiRequest, res: 
         page,
         pageSize: 10,
         parentId: null, // Only root deleted comments
-      }
+      },
     )
 
     res.json({ data: deletedComments })

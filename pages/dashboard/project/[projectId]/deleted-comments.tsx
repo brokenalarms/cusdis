@@ -4,7 +4,7 @@ import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
-import { useMutation, useQuery } from 'react-query'
+import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { MainLayout } from '../../../../components/Layout'
 import { AdminControlBar } from '../../../../components/AdminControlBar'
 import { UserSession } from '../../../../service'
@@ -75,10 +75,25 @@ function DeletedCommentsPage(props: {
   const clearSelection = () => setSelectedCommentIds([])
 
   // Batch hard delete handler
+  const queryClient = useQueryClient()
   const [isBatchHardDeleting, setIsBatchHardDeleting] = React.useState(false)
   const handleBatchHardDelete = async () => {
     if (selectedCommentIds.length === 0) return
     setIsBatchHardDeleting(true)
+    
+    // Optimistic update
+    const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
+    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+    
+    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+      if (!old) return old
+      return {
+        ...old,
+        data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
+        commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+      }
+    })
+
     try {
       const result = await hardDeleteComments({ commentIds: selectedCommentIds })
       notifications.show({
@@ -87,8 +102,12 @@ function DeletedCommentsPage(props: {
         color: 'red'
       })
       setSelectedCommentIds([])
-      await getDeletedCommentsQuery.refetch()
     } catch (e) {
+      // Revert optimistic update on error
+      if (previousComments) {
+        queryClient.setQueryData(queryKey, previousComments)
+      }
+      await getDeletedCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Hard delete operation failed', color: 'red' })
     } finally {
       setIsBatchHardDeleting(false)
@@ -100,6 +119,20 @@ function DeletedCommentsPage(props: {
   const handleBatchRestore = async () => {
     if (selectedCommentIds.length === 0) return
     setIsBatchRestoring(true)
+    
+    // Optimistic update - remove from deleted comments list
+    const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
+    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
+    
+    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+      if (!old) return old
+      return {
+        ...old,
+        data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
+        commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+      }
+    })
+
     try {
       const result = await restoreComments({ commentIds: selectedCommentIds })
       notifications.show({
@@ -108,8 +141,12 @@ function DeletedCommentsPage(props: {
         color: 'green'
       })
       setSelectedCommentIds([])
-      await getDeletedCommentsQuery.refetch()
     } catch (e) {
+      // Revert optimistic update on error
+      if (previousComments) {
+        queryClient.setQueryData(queryKey, previousComments)
+      }
+      await getDeletedCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Restore operation failed', color: 'red' })
     } finally {
       setIsBatchRestoring(false)
@@ -182,6 +219,15 @@ function DeletedCommentsPage(props: {
                           }}>
                             {comment.by_email}
                           </Text>
+                          {comment.by_email && !comment.isEmailVerified && (
+                            <Text sx={{
+                              fontWeight: 500,
+                              color: 'orange',
+                              fontSize: 11
+                            }}>
+                              UNVERIFIED
+                            </Text>
+                          )}
                         </Group>
                         <Group spacing={8} sx={{
                           fontSize: 12
