@@ -306,6 +306,11 @@ function ProjectPage(props: {
                       }}>
                         {comment.content}
                       </Box>
+                      {comment.replies.commentCount > 0 && (
+                        <Text size="xs" color="dimmed" sx={{ marginTop: 8 }}>
+                          {comment.replies.commentCount} repl{comment.replies.commentCount === 1 ? 'y' : 'ies'}
+                        </Text>
+                      )}
                     </Stack>
                     <Group sx={{
                     }}>

@@ -64,18 +64,30 @@ export class CommentService extends RequestScopeService {
       onlyOwn?: boolean
       approved?: boolean
       pageSize?: number
+      includeReplies?: boolean
     },
   ): Promise<CommentWrapper> {
     const pageSize = options?.pageSize || 10
 
-    const select = {
-      id: true,
-      createdAt: true,
-      content: true,
-      ...options?.select,
+    const include = options?.includeReplies ? {
       page: true,
-      moderatorId: true,
-    } as Prisma.CommentSelect
+      replies: {
+        where: { deletedAt: null },
+        include: {
+          page: true,
+          replies: true // Prisma will recursively include all nested replies
+        }
+      }
+    } : {
+      page: true,
+      _count: {
+        select: {
+          replies: {
+            where: { deletedAt: null }
+          }
+        }
+      }
+    }
 
     const where = {
       approved: options?.approved === true ? true : options?.approved,
@@ -100,7 +112,7 @@ export class CommentService extends RequestScopeService {
     } as Prisma.CommentWhereInput
 
     const baseQuery = {
-      select,
+      include,
       where,
     }
 
@@ -118,32 +130,48 @@ export class CommentService extends RequestScopeService {
       }),
     ])
 
-    // If there are 0 comments, there is still 1 page
     const pageCount = Math.ceil(commentCount / pageSize) || 1
-
-    const allComments = await Promise.all(
-      comments.map(async (comment: Comment) => {
-        // get replies
-        const replies = await this.getComments(projectId, timezoneOffset, {
-          ...options,
-          page: 1,
-          // hard code 100 because we havent implement pagination in nested comment
-          pageSize: 100,
-          parentId: comment.id,
-          pageSlug: options?.pageSlug,
-          select,
-        })
-
-        const formatted = this.formatComment(comment, timezoneOffset)
-        return {
-          ...formatted,
-          replies,
+    
+    // Format comments - Prisma will have included replies if requested
+    const formattedComments = comments.map(comment => {
+      const formatted = this.formatComment(comment, timezoneOffset)
+      
+      if (options?.includeReplies && comment.replies) {
+        // Recursively format nested replies that Prisma included
+        const formatReplies = (replies: any[]): CommentItem[] => {
+          return replies.map(reply => {
+            const formattedReply = this.formatComment(reply, timezoneOffset)
+            if (reply.replies && reply.replies.length > 0) {
+              formattedReply.replies = {
+                data: formatReplies(reply.replies),
+                commentCount: reply.replies.length,
+                pageSize: 0,
+                pageCount: 0
+              }
+            } else {
+              formattedReply.replies = { data: [], commentCount: 0, pageSize: 0, pageCount: 0 }
+            }
+            return formattedReply
+          })
         }
-      }),
-    )
+        
+        formatted.replies = {
+          data: formatReplies(comment.replies),
+          commentCount: comment.replies.length,
+          pageSize: 0,
+          pageCount: 0
+        }
+      } else {
+        // Use _count from Prisma for reply count without fetching full replies
+        const replyCount = (comment as any)._count?.replies || 0
+        formatted.replies = { data: [], commentCount: replyCount, pageSize: 0, pageCount: 0 }
+      }
+      
+      return formatted
+    })
 
     return {
-      data: allComments,
+      data: formattedComments,
       commentCount,
       pageSize,
       pageCount,
