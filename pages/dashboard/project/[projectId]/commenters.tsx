@@ -168,15 +168,9 @@ function CommentersPage(props: {
   const batchDeleteMutation = useMutation(
     (data: { projectId: string, emails: string[] }) => batchDeleteCommentsByEmail(data),
     {
-      onMutate: async ({ emails }) => {
-        // Cancel any outgoing refetches
+      onSuccess: (result, { emails }) => {
+        // Update UI only after successful API call
         const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page }]
-        await queryClient.cancelQueries(queryKey)
-
-        // Snapshot the previous value
-        const previousCommenters = queryClient.getQueryData<CommentersData>(queryKey)
-
-        // Optimistically update to the new value
         queryClient.setQueryData<CommentersData>(queryKey, (old) => {
           if (!old) return old
           return {
@@ -185,10 +179,7 @@ function CommentersPage(props: {
             total: Math.max(0, old.total - emails.length)
           }
         })
-
-        return { previousCommenters, queryKey }
-      },
-      onSuccess: (result, { emails }) => {
+        
         notifications.show({
           title: 'Deleted',
           message: `Deleted all comments from ${emails.length} commenter(s)`,
@@ -197,10 +188,6 @@ function CommentersPage(props: {
         setSelectedEmails([])
       },
       onError: (err, { emails }, context) => {
-        // Revert the optimistic update on error
-        if (context?.previousCommenters) {
-          queryClient.setQueryData(context.queryKey, context.previousCommenters)
-        }
         // Refetch to ensure consistency after error
         getCommentersQuery.refetch()
         notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })

@@ -345,29 +345,24 @@ function ProjectPage(props: {
   const performBatchApprove = async () => {
     setIsBatchApproving(true)
     
-    // Optimistic update
-    const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
-    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-    
-    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-      if (!old) return old
-      return {
-        ...old,
-        data: old.data.map(comment =>
-          selectedCommentIds.includes(comment.id) ? { ...comment, approved: true, isEmailVerified: true } : comment
-        )
-      }
-    })
-
     try {
       const result = await approveComments({ commentIds: selectedCommentIds })
+      
+      // Update UI only after successful API call
+      const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.map(comment =>
+            selectedCommentIds.includes(comment.id) ? { ...comment, approved: true, isEmailVerified: true } : comment
+          )
+        }
+      })
+      
       notifications.show({ title: 'Approved', message: `Approved ${result.approved} comment(s)`, color: 'green' })
       setSelectedCommentIds([])
     } catch (e) {
-      // Revert optimistic update on error
-      if (previousComments) {
-        queryClient.setQueryData(queryKey, previousComments)
-      }
       await getCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Approval failed', color: 'red' })
     } finally {
@@ -381,21 +376,20 @@ function ProjectPage(props: {
     if (selectedCommentIds.length === 0) return
     setIsBatchDeleting(true)
     
-    // Optimistic update
-    const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
-    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-    
-    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-      if (!old) return old
-      return {
-        ...old,
-        data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
-        commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
-      }
-    })
-
     try {
       const result = await deleteComments({ commentIds: selectedCommentIds })
+      
+      // Update UI only after successful API call
+      const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
+          commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+        }
+      })
+      
       notifications.show({
         title: 'Deleted',
         message: `Deleted ${result.deleted} comment(s)`,
@@ -403,10 +397,6 @@ function ProjectPage(props: {
       })
       setSelectedCommentIds([])
     } catch (e) {
-      // Revert optimistic update on error
-      if (previousComments) {
-        queryClient.setQueryData(queryKey, previousComments)
-      }
       await getCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })
     } finally {

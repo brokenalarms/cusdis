@@ -161,21 +161,20 @@ function DeletedCommentsPage(props: {
   const performBatchHardDelete = async () => {
     setIsBatchHardDeleting(true)
     
-    // Optimistic update
-    const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
-    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-    
-    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-      if (!old) return old
-      return {
-        ...old,
-        data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
-        commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
-      }
-    })
-
     try {
       const result = await hardDeleteComments({ commentIds: selectedCommentIds })
+      
+      // Update UI only after successful API call
+      const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
+          commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+        }
+      })
+      
       notifications.show({
         title: 'Permanently Deleted',
         message: `Permanently deleted ${result.deletedCount} comment(s) and replies`,
@@ -183,10 +182,6 @@ function DeletedCommentsPage(props: {
       })
       setSelectedCommentIds([])
     } catch (e) {
-      // Revert optimistic update on error
-      if (previousComments) {
-        queryClient.setQueryData(queryKey, previousComments)
-      }
       await getDeletedCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Hard delete operation failed', color: 'red' })
     } finally {
