@@ -40,16 +40,16 @@ export class CommentService extends RequestScopeService {
   emailService = new EmailService()
   tokenService = new TokenService()
 
-  private formatComment(comment: Comment & Partial<{ replies: Comment[] }>, timezoneOffset: number = 0, verificationMap?: Map<string, boolean>): CommentItem {
+  private formatComment(comment: Comment & Partial<{ replies: Comment[] }>, timezoneOffset: number = 0, verificationMap?: Map<string, boolean>, isAdminRequest: boolean = false): CommentItem {
     const parsedCreatedAt = dayjs
       .utc(comment.createdAt)
       .utcOffset(timezoneOffset)
       .format('YYYY-MM-DD HH:mm')
     
-    // Handle deleted comments with placeholder content
+    // Handle deleted comments with placeholder content (only for public requests)
     const isDeleted = comment.deletedAt !== null
-    const displayContent = isDeleted ? "This comment has been deleted" : comment.content
-    const displayNickname = isDeleted ? "deleted" : comment.by_nickname
+    const displayContent = (isDeleted && !isAdminRequest) ? "This comment has been deleted" : comment.content
+    const displayNickname = (isDeleted && !isAdminRequest) ? "deleted" : comment.by_nickname
     
     const parsedContent = markdown.render(displayContent) as string
     
@@ -552,20 +552,24 @@ export class CommentService extends RequestScopeService {
 
     const pageCount = Math.ceil(commentCount / pageSize) || 1
     
-    // Format comments similar to regular getComments
+    // Fetch verification status for all unique emails in deleted comments (same as regular getComments)
+    const uniqueEmails = [...new Set(comments.map(comment => comment.by_email).filter(Boolean) as string[])]
+    
+    const verifiedCommenters = await prisma.commenter.findMany({
+      where: { email: { in: uniqueEmails } },
+      select: { email: true, verifiedAt: true }
+    })
+    
+    const verificationMap = new Map(
+      verifiedCommenters.map(c => [c.email, Boolean(c.verifiedAt)])
+    )
+
+    // Format deleted comments for admin panel using existing formatComment method
     const formattedComments = comments.map(comment => {
-      const formatted = {
+      return this.formatComment({
         ...comment,
-        parsedContent: markdown.render(comment.content || ''),
-        parsedCreatedAt: dayjs(comment.createdAt).utcOffset(timezoneOffset / 60).format('YYYY-MM-DD HH:mm:ss'),
-        replies: { 
-          data: [], 
-          commentCount: (comment as any)._count?.replies || 0, 
-          pageSize: 0, 
-          pageCount: 0 
-        }
-      }
-      return formatted
+        replies: []
+      }, timezoneOffset, verificationMap, true) // isAdminRequest = true
     })
 
     return {

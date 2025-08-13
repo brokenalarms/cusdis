@@ -49,6 +49,7 @@ const deleteComments = async ({ commentIds }) => {
   return res.data
 }
 
+
 const replyAsModerator = async ({ parentId, content }) => {
   const res = await apiClient.post(`/comment/${parentId}/replyAsModerator`, {
     content
@@ -78,16 +79,11 @@ function CommentToolbar(props: {
   const [replyContent, setReplyContent] = React.useState("")
   const [isOpenReplyForm, setIsOpenReplyForm] = React.useState(false)
 
+
   const approveCommentMutation = useMutation((data: { commentId: string }) => approveComments({ commentIds: [data.commentId] }), {
-    onMutate: async ({ commentId }) => {
-      // Cancel any outgoing refetches
+    onSuccess: (result, { commentId }) => {
+      // Update UI only after API success
       const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      await queryClient.cancelQueries(queryKey)
-
-      // Snapshot the previous value
-      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-
-      // Optimistically update to the new value
       queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
         if (!old) return old
         return {
@@ -97,14 +93,8 @@ function CommentToolbar(props: {
           )
         }
       })
-
-      return { previousComments, queryKey }
     },
     onError: (err, { commentId }, context) => {
-      // Revert the optimistic update on error
-      if (context?.previousComments) {
-        queryClient.setQueryData(context.queryKey, context.previousComments)
-      }
       // Refetch to ensure consistency after error
       props.refetch()
       notifications.show({
@@ -116,15 +106,9 @@ function CommentToolbar(props: {
   })
 
   const unapproveCommentMutation = useMutation((data: { commentId: string }) => unapproveComments({ commentIds: [data.commentId] }), {
-    onMutate: async ({ commentId }) => {
-      // Cancel any outgoing refetches
+    onSuccess: (result, { commentId }) => {
+      // Update UI only after API success
       const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      await queryClient.cancelQueries(queryKey)
-
-      // Snapshot the previous value
-      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-
-      // Optimistically update to the new value
       queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
         if (!old) return old
         return {
@@ -134,14 +118,8 @@ function CommentToolbar(props: {
           )
         }
       })
-
-      return { previousComments, queryKey }
     },
     onError: (err, { commentId }, context) => {
-      // Revert the optimistic update on error
-      if (context?.previousComments) {
-        queryClient.setQueryData(context.queryKey, context.previousComments)
-      }
       // Refetch to ensure consistency after error
       props.refetch()
       notifications.show({
@@ -188,15 +166,9 @@ function CommentToolbar(props: {
     }
   })
   const deleteCommentMutation = useMutation((data: { commentId: string }) => deleteComments({ commentIds: [data.commentId] }), {
-    onMutate: async ({ commentId }) => {
-      // Cancel any outgoing refetches
+    onSuccess: (result, { commentId }) => {
+      // Remove comment from UI only after API success
       const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      await queryClient.cancelQueries(queryKey)
-
-      // Snapshot the previous value
-      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-
-      // Optimistically remove comment from UI
       queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
         if (!old) return old
         return {
@@ -205,14 +177,8 @@ function CommentToolbar(props: {
           commentCount: Math.max(0, old.commentCount - 1)
         }
       })
-
-      return { previousComments, queryKey }
     },
     onError: (err, { commentId }, context) => {
-      // Revert the optimistic update on error
-      if (context?.previousComments) {
-        queryClient.setQueryData(context.queryKey, context.previousComments)
-      }
       // Refetch to ensure consistency after error
       props.refetch()
       notifications.show({
@@ -326,6 +292,7 @@ function ProjectPage(props: {
 
   const getCommentsQuery = useQuery(['getComments', { projectId: router.query.projectId as string, page }], getComments, {
   })
+
 
   // Selection state for batch actions
   const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([])
@@ -569,7 +536,11 @@ function ProjectPage(props: {
                     </Stack>
                     <Group sx={{
                     }}>
-                      <CommentToolbar comment={comment} refetch={getCommentsQuery.refetch} currentPage={page} />
+                      <CommentToolbar 
+                        comment={comment} 
+                        refetch={getCommentsQuery.refetch} 
+                        currentPage={page} 
+                      />
                     </Group>
                     </Stack>
                   </Group>

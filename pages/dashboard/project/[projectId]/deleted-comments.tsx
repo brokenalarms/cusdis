@@ -1,9 +1,11 @@
 import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Checkbox } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { modals } from '@mantine/modals'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
+import { AiOutlineReload, AiOutlineDelete } from 'react-icons/ai'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { MainLayout } from '../../../../components/Layout'
 import { AdminControlBar } from '../../../../components/AdminControlBar'
@@ -40,6 +42,7 @@ const restoreComments = async ({ commentIds }) => {
   return res.data
 }
 
+
 function DeletedCommentsPage(props: {
   project: ProjectServerSideProps,
   session: UserSession,
@@ -64,6 +67,61 @@ function DeletedCommentsPage(props: {
 
   // Selection state for batch actions
   const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([])
+  
+  // Individual action mutations
+  const restoreCommentMutation = useMutation((data: { commentId: string }) => restoreComments({ commentIds: [data.commentId] }), {
+    onSuccess: (result, { commentId }) => {
+      const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.filter(comment => comment.id !== commentId),
+          commentCount: Math.max(0, old.commentCount - 1)
+        }
+      })
+      notifications.show({
+        title: 'Restored',
+        message: 'Comment restored successfully',
+        color: 'green'
+      })
+    },
+    onError: () => {
+      getDeletedCommentsQuery.refetch()
+      notifications.show({
+        title: "Error",
+        message: 'Failed to restore comment',
+        color: 'red'
+      })
+    }
+  })
+
+  const hardDeleteCommentMutation = useMutation((data: { commentId: string }) => hardDeleteComments({ commentIds: [data.commentId] }), {
+    onSuccess: (result, { commentId }) => {
+      const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.filter(comment => comment.id !== commentId),
+          commentCount: Math.max(0, old.commentCount - 1)
+        }
+      })
+      notifications.show({
+        title: 'Permanently Deleted',
+        message: `Permanently deleted comment and ${result.deletedCount - 1} replies`,
+        color: 'red'
+      })
+    },
+    onError: () => {
+      getDeletedCommentsQuery.refetch()
+      notifications.show({
+        title: "Error",
+        message: 'Failed to permanently delete comment',
+        color: 'red'
+      })
+    }
+  })
   const isSelected = React.useCallback((id: string) => selectedCommentIds.includes(id), [selectedCommentIds])
   const toggleSelected = (id: string) => {
     setSelectedCommentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -79,6 +137,22 @@ function DeletedCommentsPage(props: {
   const [isBatchHardDeleting, setIsBatchHardDeleting] = React.useState(false)
   const handleBatchHardDelete = async () => {
     if (selectedCommentIds.length === 0) return
+    
+    // Show confirmation dialog
+    modals.openConfirmModal({
+      title: 'Permanently delete selected comments',
+      children: (
+        <Text size="sm">
+          Are you sure you want to permanently delete {selectedCommentIds.length} comment(s)? This action cannot be undone and will also delete all replies to these comments.
+        </Text>
+      ),
+      labels: { confirm: 'Permanently Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => performBatchHardDelete()
+    })
+  }
+
+  const performBatchHardDelete = async () => {
     setIsBatchHardDeleting(true)
     
     // Optimistic update
@@ -120,21 +194,22 @@ function DeletedCommentsPage(props: {
     if (selectedCommentIds.length === 0) return
     setIsBatchRestoring(true)
     
-    // Optimistic update - remove from deleted comments list
     const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
     const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-    
-    queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-      if (!old) return old
-      return {
-        ...old,
-        data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
-        commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
-      }
-    })
 
     try {
       const result = await restoreComments({ commentIds: selectedCommentIds })
+      
+      // Update UI only after successful API call
+      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
+          commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+        }
+      })
+      
       notifications.show({
         title: 'Restored',
         message: `Restored ${result.restored} comment(s)`,
@@ -142,10 +217,6 @@ function DeletedCommentsPage(props: {
       })
       setSelectedCommentIds([])
     } catch (e) {
-      // Revert optimistic update on error
-      if (previousComments) {
-        queryClient.setQueryData(queryKey, previousComments)
-      }
       await getDeletedCommentsQuery.refetch()
       notifications.show({ title: 'Error', message: 'Restore operation failed', color: 'red' })
     } finally {
@@ -264,6 +335,47 @@ function DeletedCommentsPage(props: {
                           </Text>
                         )}
                       </Stack>
+                      <Group sx={{ alignSelf: 'flex-start' }}>
+                        <Button 
+                          loading={restoreCommentMutation.isLoading && restoreCommentMutation.variables?.commentId === comment.id} 
+                          onClick={() => restoreCommentMutation.mutate({ commentId: comment.id })} 
+                          leftIcon={<AiOutlineReload />} 
+                          color="green" 
+                          size="xs" 
+                          variant={'light'}
+                        >
+                          Restore
+                        </Button>
+                        <Button 
+                          loading={hardDeleteCommentMutation.isLoading && hardDeleteCommentMutation.variables?.commentId === comment.id} 
+                          onClick={() => {
+                            modals.openConfirmModal({
+                              title: 'Permanently delete comment',
+                              children: (
+                                <Stack spacing="xs">
+                                  <Text size="sm">
+                                    Are you sure you want to permanently delete this comment? This action cannot be undone.
+                                  </Text>
+                                  {comment.replies.commentCount > 0 && (
+                                    <Text size="sm" weight={500} color="red">
+                                      This will also permanently delete {comment.replies.commentCount} repl{comment.replies.commentCount === 1 ? 'y' : 'ies'}.
+                                    </Text>
+                                  )}
+                                </Stack>
+                              ),
+                              labels: { confirm: 'Permanently Delete', cancel: 'Cancel' },
+                              confirmProps: { color: 'red' },
+                              onConfirm: () => hardDeleteCommentMutation.mutate({ commentId: comment.id })
+                            })
+                          }} 
+                          leftIcon={<AiOutlineDelete />} 
+                          color="red" 
+                          size="xs" 
+                          variant={'subtle'}
+                        >
+                          Hard Delete
+                        </Button>
+                      </Group>
                     </Stack>
                   </Group>
                 </List.Item>

@@ -1,5 +1,6 @@
 import { Anchor, Box, Button, Center, Group, List, Pagination, Stack, Text, Checkbox, Loader, Overlay } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { modals } from '@mantine/modals'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
@@ -128,9 +129,28 @@ function CommentersPage(props: {
 
   const handleBatchDeleteByEmail = () => {
     if (selectedEmails.length === 0) return
-    batchDeleteMutation.mutate({ 
-      projectId: router.query.projectId as string, 
-      emails: selectedEmails 
+    
+    modals.openConfirmModal({
+      title: 'Delete all comments from selected users',
+      children: (
+        <Stack spacing="xs">
+          <Text size="sm">
+            Delete all comments from {selectedEmails.length} selected user(s)?
+          </Text>
+          <Text size="sm" color="red">
+            This will soft-delete all comments from: <strong>{selectedEmails.join(', ')}</strong>
+          </Text>
+          <Text size="sm" color="red">
+            Deleted comments can be restored from the deleted comments page.
+          </Text>
+        </Stack>
+      ),
+      labels: { confirm: 'Delete All Comments', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => batchDeleteMutation.mutate({ 
+        projectId: router.query.projectId as string, 
+        emails: selectedEmails 
+      })
     })
   }
 
