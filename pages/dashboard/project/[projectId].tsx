@@ -36,6 +36,13 @@ const deleteComment = async ({ commentId }) => {
   return res.data
 }
 
+const batchDeleteComments = async ({ commentIds }) => {
+  const res = await apiClient.delete('/comments/batch-delete', {
+    data: { commentIds }
+  })
+  return res.data
+}
+
 const replyAsModerator = async ({ parentId, content }) => {
   const res = await apiClient.post(`/comment/${parentId}/replyAsModerator`, {
     content
@@ -200,25 +207,25 @@ function ProjectPage(props: {
     }
   }
 
-  // Batch delete handler uses existing deleteComment()
+  // Batch delete handler uses new batch API
   const [isBatchDeleting, setIsBatchDeleting] = React.useState(false)
   const handleBatchDelete = async () => {
     if (selectedCommentIds.length === 0) return
     if (!window.confirm(`Delete ${selectedCommentIds.length} selected comment(s)? This cannot be undone.`)) return
     setIsBatchDeleting(true)
     try {
-      const results = await Promise.allSettled(
-        selectedCommentIds.map((id) => deleteComment({ commentId: id }))
-      )
-      const success = results.filter(r => r.status === 'fulfilled').length
-      const failed = results.length - success
+      const result = await batchDeleteComments({ commentIds: selectedCommentIds })
+      const { deleted, requested } = result
+      const failed = requested - deleted
       notifications.show({
         title: failed ? 'Partially deleted' : 'Deleted',
-        message: failed ? `Deleted ${success}, failed ${failed}` : `Deleted ${success} comment(s)`,
+        message: failed ? `Deleted ${deleted}, failed ${failed}` : `Deleted ${deleted} comment(s)`,
         color: failed ? 'yellow' : 'red'
       })
       setSelectedCommentIds([])
       await getCommentsQuery.refetch()
+    } catch (e) {
+      notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })
     } finally {
       setIsBatchDeleting(false)
     }
@@ -274,6 +281,12 @@ function ProjectPage(props: {
                           fontWeight: 500
                         }}>
                           {comment.by_nickname}
+                        </Text>
+                        <Text sx={{
+                          fontWeight: 400,
+                          color: 'gray'
+                        }}>
+                          {comment.by_email}
                         </Text>
                       </Group>
                       <Group spacing={8} sx={{

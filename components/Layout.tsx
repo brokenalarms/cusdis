@@ -40,7 +40,7 @@ const updateUserSettings = async (params: {
 
 export function MainLayout(props: {
   children?: any,
-  id: 'comments' | 'settings'
+  id: 'comments' | 'commenters' | 'settings'
   project: ProjectServerSideProps,
 } & MainLayoutData) {
 
@@ -174,6 +174,10 @@ export function MainLayout(props: {
         <Stack spacing={8} p="sm">
           <Link href={`/dashboard/project/${projectId}`} style={{ textDecoration: 'none' }}>
             <NavLink active={props.id === "comments"} styles={styles} label="Comments" icon={<AiOutlineComment />}>
+            </NavLink>
+          </Link>
+          <Link href={`/dashboard/project/${projectId}/commenters`} style={{ textDecoration: 'none' }}>
+            <NavLink active={props.id === "commenters"} styles={styles} label="Commenters" icon={<AiOutlineComment />}>
             </NavLink>
           </Link>
           <Link href={`/dashboard/project/${projectId}/settings`} style={{ textDecoration: 'none' }}>

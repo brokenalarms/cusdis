@@ -16,9 +16,9 @@ export const resolvedConfig = {
   host: process.env.HOST || 'https://cusdis.com',
   checkout: {
     enabled: process.env.CHECKOUT_URL ? true : false,
-    url: process.env.CHECKOUT_URL as string,
-    lemonSecret: process.env.LEMON_SECRET as string,
-    lemonApiKey: process.env.LEMON_API_KEY as string,
+    url: (process.env.CHECKOUT_URL as string) || '',
+    lemonSecret: (process.env.LEMON_SECRET as string) || '',
+    lemonApiKey: (process.env.LEMON_API_KEY as string) || '',
   },
   umami: {
     id: process.env.UMAMI_ID as EnvVariable,

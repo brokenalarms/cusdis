@@ -320,6 +320,20 @@ export class CommentService extends RequestScopeService {
     })
   }
 
+  async batchDelete(commentIds: string[]) {
+    const result = await prisma.comment.updateMany({
+      where: {
+        id: {
+          in: commentIds,
+        },
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    })
+    return result.count
+  }
+
   async sendConfirmReplyNotificationEmail(
     to: string,
     pageSlug: string,
