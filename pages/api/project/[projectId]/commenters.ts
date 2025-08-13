@@ -9,15 +9,12 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  console.log('COMMENTERS API HIT:', req.method, req.url)
-  
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
+
   const projectService = new ProjectService(req)
   const authService = new AuthService(req, res)
-
-  if (req.method !== 'GET') {
-    console.log('Wrong method:', req.method)
-    return
-  }
 
   const { projectId, page } = req.query as {
     projectId: string
@@ -32,11 +29,8 @@ export default async function handler(
   })) as Pick<Project, 'ownerId'>
 
   if (!(await authService.projectOwnerGuard(project))) {
-    console.log('Auth failed')
     return
   }
-  
-  console.log('Auth passed, fetching comments...')
 
   // Get session for admin email
   const session = await authService.authGuard()
@@ -77,9 +71,6 @@ export default async function handler(
     },
   })
 
-  // Debug: Check what we found
-  console.log('Found comments:', allComments.length)
-  console.log('Sample comment:', allComments[0])
 
   // Group comments by email and count them
   const commenterMap = new Map<
@@ -93,19 +84,11 @@ export default async function handler(
     }
   >()
 
-  console.log('Session:', session?.user?.email)
-  
   allComments.forEach((comment) => {
     // For admin comments, use session email; for regular comments, use by_email
     const email = comment.moderatorId 
       ? session?.user?.email
       : comment.by_email
-    console.log('Comment:', {
-      moderatorId: comment.moderatorId,
-      by_email: comment.by_email,
-      resolved_email: email,
-      will_skip: !email
-    })
     
     if (!email) return // Skip if no email available
     
@@ -133,7 +116,6 @@ export default async function handler(
     }
   })
 
-  console.log('Final commenters:', Array.from(commenterMap.keys()))
 
   // Convert to array and sort by comment count
   const allCommenters = Array.from(commenterMap.values()).sort(
