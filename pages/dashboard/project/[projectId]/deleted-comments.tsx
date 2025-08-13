@@ -74,7 +74,6 @@ function DeletedCommentsPage(props: {
   const [isBatchHardDeleting, setIsBatchHardDeleting] = React.useState(false)
   const handleBatchHardDelete = async () => {
     if (selectedCommentIds.length === 0) return
-    if (!window.confirm(`Permanently delete ${selectedCommentIds.length} selected comment(s) and all their replies? This cannot be undone.`)) return
     setIsBatchHardDeleting(true)
     try {
       let totalDeleted = 0

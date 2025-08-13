@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react"
 import { useMutation, useQuery } from "react-query"
 import { useRouter } from "next/router"
-import { AiOutlineLogout, AiOutlineSetting, AiOutlineFileText, AiOutlineAlert, AiOutlinePlus, AiOutlineComment, AiOutlineCode, AiOutlineRight, AiOutlineDown, AiOutlineFile, AiOutlineQuestion, AiOutlineQuestionCircle } from 'react-icons/ai'
+import { AiOutlineLogout, AiOutlineSetting, AiOutlineFileText, AiOutlineAlert, AiOutlinePlus, AiOutlineComment, AiOutlineCode, AiOutlineRight, AiOutlineDown, AiOutlineFile, AiOutlineQuestion, AiOutlineQuestionCircle, AiOutlineDelete } from 'react-icons/ai'
 import { signout, signOut } from "next-auth/client"
 import { Anchor, AppShell, Avatar, Badge, Box, Button, Code, Grid, Group, Header, List, Menu, Modal, Navbar, NavLink, Paper, Progress, ScrollArea, Select, Space, Stack, Switch, Text, TextInput, Title, Loader } from "@mantine/core"
 import Link from "next/link"
@@ -199,6 +199,7 @@ export function MainLayout(props: {
     const currentPath = pendingRoute || router.asPath
     const isCommentsActive = currentPath.includes('/comments')
     const isCommentersActive = currentPath.includes('/commenters') 
+    const isDeletedCommentsActive = currentPath.includes('/deleted-comments')
     const isSettingsActive = currentPath.includes('/settings')
     
     return (
@@ -210,6 +211,10 @@ export function MainLayout(props: {
           </Link>
           <Link href={`/dashboard/project/${projectId}/commenters`} style={{ textDecoration: 'none' }}>
             <NavLink active={isCommentersActive} styles={styles} label="Commenters" icon={<AiOutlineComment />}>
+            </NavLink>
+          </Link>
+          <Link href={`/dashboard/project/${projectId}/deleted-comments`} style={{ textDecoration: 'none' }}>
+            <NavLink active={isDeletedCommentsActive} styles={styles} label="Deleted Comments" icon={<AiOutlineDelete />}>
             </NavLink>
           </Link>
           <Link href={`/dashboard/project/${projectId}/settings`} style={{ textDecoration: 'none' }}>

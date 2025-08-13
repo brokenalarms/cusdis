@@ -90,7 +90,6 @@ function CommentersPage(props: {
       ?.filter(c => selectedEmails.includes(c.email))
       ?.reduce((sum, c) => sum + c.commentCount, 0) || 0
     
-    if (!window.confirm(`Delete all comments from ${selectedEmails.length} selected commenter(s)? This will delete ${totalComments} comment(s) total and cannot be undone.`)) return
     
     setIsBatchDeleting(true)
     try {

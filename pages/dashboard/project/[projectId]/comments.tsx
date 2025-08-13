@@ -212,7 +212,6 @@ function ProjectPage(props: {
   const [isBatchDeleting, setIsBatchDeleting] = React.useState(false)
   const handleBatchDelete = async () => {
     if (selectedCommentIds.length === 0) return
-    if (!window.confirm(`Delete ${selectedCommentIds.length} selected comment(s)? This cannot be undone.`)) return
     setIsBatchDeleting(true)
     try {
       const result = await batchDeleteComments({ commentIds: selectedCommentIds })

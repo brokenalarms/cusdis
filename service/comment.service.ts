@@ -458,4 +458,84 @@ export class CommentService extends RequestScopeService {
 
     statService.capture('send_email_verification')
   }
+
+  async getDeletedComments(
+    projectId: string,
+    timezoneOffset: number,
+    options?: {
+      parentId?: string
+      page?: number
+      pageSize?: number
+      select?: Prisma.CommentSelect
+    },
+  ): Promise<CommentWrapper> {
+    const pageSize = options?.pageSize || 10
+    const offset = ((options?.page || 1) - 1) * pageSize
+
+    const baseWhere = {
+      page: {
+        projectId,
+      },
+      deletedAt: { not: null }, // Only deleted comments
+      parentId: options?.parentId || null,
+    } as Prisma.CommentWhereInput
+
+    const [comments, commentCount] = await Promise.all([
+      prisma.comment.findMany({
+        where: baseWhere,
+        select: options?.select || {
+          id: true,
+          content: true,
+          by_nickname: true,
+          by_email: true,
+          createdAt: true,
+          deletedAt: true,
+          approved: true,
+          moderatorId: true,
+          page: {
+            select: {
+              slug: true,
+              url: true,
+            },
+          },
+          _count: {
+            select: { replies: true }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: offset,
+        take: pageSize,
+      }),
+      prisma.comment.count({
+        where: baseWhere,
+      })
+    ])
+
+    const pageCount = Math.ceil(commentCount / pageSize) || 1
+    
+    // Format comments similar to regular getComments
+    const formattedComments = comments.map(comment => {
+      const formatted = {
+        ...comment,
+        parsedContent: markdown.render(comment.content || ''),
+        parsedCreatedAt: dayjs(comment.createdAt).utcOffset(timezoneOffset / 60).format('YYYY-MM-DD HH:mm:ss'),
+        replies: { 
+          data: [], 
+          commentCount: (comment as any)._count?.replies || 0, 
+          pageSize: 0, 
+          pageCount: 0 
+        }
+      }
+      return formatted
+    })
+
+    return {
+      data: formattedComments,
+      commentCount,
+      pageSize,
+      pageCount,
+    }
+  }
 }

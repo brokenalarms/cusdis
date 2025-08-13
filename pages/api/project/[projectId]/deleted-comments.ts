@@ -11,22 +11,18 @@ export default withProjectAuth(async function handler(req: NextApiRequest, res: 
 
   try {
     const page = parseInt(req.query.page as string) || 1
-    const comments = await commentService.getComments(
+    const timezoneOffset = req.headers['x-timezone-offset'] ? parseInt(req.headers['x-timezone-offset'] as string) : 0
+    
+    // Use the new getDeletedComments method
+    const deletedComments = await commentService.getDeletedComments(
       project.id,
-      req.headers['x-timezone-offset'] ? parseInt(req.headers['x-timezone-offset'] as string) : 0,
+      timezoneOffset,
       {
         page,
         pageSize: 10,
-        includeDeletedParents: true,
         parentId: null, // Only root deleted comments
       }
     )
-    
-    // Filter to only show actually deleted comments
-    const deletedComments = {
-      ...comments,
-      data: comments.data.filter(comment => comment.deletedAt)
-    }
 
     res.json({ data: deletedComments })
   } catch (error) {
