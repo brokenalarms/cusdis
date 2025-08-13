@@ -12,33 +12,42 @@ export default async function handler(
   const projectService = new ProjectService(req)
   const commentService = new CommentService(req)
   const authService = new AuthService(req, res)
-  if (req.method === 'GET') {
-    const { projectId, page } = req.query as {
-      projectId: string
-      page: string
-    }
+  if (req.method !== 'GET') {
+    return
+  }
+  const { projectId, page } = req.query as {
+    projectId: string
+    page: string
+  }
 
-    const timezoneOffsetInHour = req.headers['x-timezone-offset'] || 0
+  const timezoneOffsetInHour = req.headers['x-timezone-offset'] || 0
 
-    // only owner can get comments
-    const project = (await projectService.get(projectId, {
-      select: {
-        ownerId: true,
-      },
-    })) as Pick<Project, 'ownerId'>
+  // only owner can get comments
+  const project = (await projectService.get(projectId, {
+    select: {
+      ownerId: true,
+    },
+  })) as Pick<Project, 'ownerId'>
 
-    if (!(await authService.projectOwnerGuard(project))) {
-      return
-    }
+  if (!(await authService.projectOwnerGuard(project))) {
+    return
+  }
 
-    const queryCommentStat = statService.start('query_comments', 'Query Comments', {
+  const queryCommentStat = statService.start(
+    'query_comments',
+    'Query Comments',
+    {
       tags: {
         project_id: projectId,
-        from: 'dashboard'
-      }
-    })
+        from: 'dashboard',
+      },
+    },
+  )
 
-    const comments = await commentService.getComments(projectId, Number(timezoneOffsetInHour), {
+  const comments = await commentService.getComments(
+    projectId,
+    Number(timezoneOffsetInHour),
+    {
       // parentId: null,
       page: Number(page),
       onlyOwn: true,
@@ -48,12 +57,12 @@ export default async function handler(
         approved: true,
         moderatorId: true,
       },
-    })
+    },
+  )
 
-    queryCommentStat.end()
+  queryCommentStat.end()
 
-    res.json({
-      data: comments,
-    })
-  }
+  res.json({
+    data: comments,
+  })
 }
