@@ -18,19 +18,22 @@ export class AuthService extends RequestScopeService {
   }
 
   async projectOwnerGuard(project: Pick<Project, 'ownerId'>) {
-    const session = await this.authGuard()
-
+    const session = await this.getSession()
+    
     if (!session) {
-      return null
+      this.res.status(401).json({
+        message: 'Sign in required',
+      })
+      throw new Error('Unauthorized')
     }
 
     if (project.ownerId !== session.uid) {
       this.res.status(403).json({
         message: 'Permission denied',
       })
-      return null
-    } else {
-      return true
+      throw new Error('Forbidden')
     }
+
+    return session
   }
 }

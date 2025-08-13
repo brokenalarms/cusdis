@@ -1,37 +1,23 @@
-import { Project } from "@prisma/client";
 import { NextApiRequest, NextApiResponse } from "next";
-import { AuthService } from "../../../service/auth.service";
 import { ProjectService } from "../../../service/project.service";
 import { prisma } from "../../../utils.server";
+import { withProjectAuth } from "../../../utils/auth-wrappers";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-
-  const authService = new AuthService(req, res)
-  const projectService = new ProjectService(req)
+export default withProjectAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session: _session, project, mainLayoutData: _mainLayoutData }) {
+  if (req.method !== 'PUT' && req.method !== 'DELETE') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
 
   if (req.method === 'PUT') {
-    const { projectId } = req.query as {
-      projectId: string
-    }
     const body = req.body as {
       enableNotification?: boolean,
       webhookUrl?: string,
       enableWebhook?: boolean
     }
 
-    const project = (await projectService.get(projectId, {
-      select: {
-        ownerId: true,
-      },
-    })) as Pick<Project, 'ownerId'>
-
-    if (!(await authService.projectOwnerGuard(project))) {
-      return
-    }
-
     await prisma.project.update({
       where: {
-        id: projectId,
+        id: project.id,
       },
       data: {
         enableNotification: body.enableNotification,
@@ -44,24 +30,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: 'success'
     })
   } else if (req.method === 'DELETE') {
-    const { projectId } = req.query as {
-      projectId: string
-    }
-
-    const project = (await projectService.get(projectId, {
-      select: {
-        ownerId: true,
-      },
-    })) as Pick<Project, 'ownerId'>
-
-    if (!(await authService.projectOwnerGuard(project))) {
-      return
-    }
-
-    await projectService.delete(projectId)
+    const projectService = new ProjectService(req)
+    await projectService.delete(project.id)
 
     res.json({
       message: 'success'
     })
   }
-}
+})

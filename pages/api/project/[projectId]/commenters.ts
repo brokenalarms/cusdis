@@ -1,39 +1,18 @@
-import { Project } from '@prisma/client'
 import { NextApiRequest, NextApiResponse } from 'next'
-import { AuthService } from '../../../../service/auth.service'
-import { ProjectService } from '../../../../service/project.service'
 import { statService } from '../../../../service/stat.service'
 import { prisma } from '../../../../utils.server'
+import { withProjectAuth } from '../../../../utils/auth-wrappers'
 
-export default async function handler(
+export default withProjectAuth(async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
+  { session, project }
 ) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
 
-  const projectService = new ProjectService(req)
-  const authService = new AuthService(req, res)
-
-  const { projectId, page } = req.query as {
-    projectId: string
-    page: string
-  }
-
-  // only owner can get commenters
-  const project = (await projectService.get(projectId, {
-    select: {
-      ownerId: true,
-    },
-  })) as Pick<Project, 'ownerId'>
-
-  if (!(await authService.projectOwnerGuard(project))) {
-    return
-  }
-
-  // Get session for admin email
-  const session = await authService.authGuard()
+  const { page } = req.query as { page: string }
 
   const pageSize = 10
   const currentPage = Number(page) || 1
@@ -44,7 +23,7 @@ export default async function handler(
   const allComments = await prisma.comment.findMany({
     where: {
       page: {
-        projectId,
+        projectId: project.id,
       },
       deletedAt: null,
       OR: [
@@ -72,6 +51,7 @@ export default async function handler(
   })
 
 
+
   // Group comments by email and count them
   const commenterMap = new Map<
     string,
@@ -85,23 +65,24 @@ export default async function handler(
   >()
 
   allComments.forEach((comment) => {
-    // For admin comments, use session email; for regular comments, use by_email
-    const email = comment.moderatorId 
-      ? session?.user?.email
+    // Group by moderatorId for admin comments, by_email for regular comments
+    const groupKey = comment.moderatorId || comment.by_email
+    const displayEmail = comment.moderatorId 
+      ? `admin-${comment.moderatorId}`
       : comment.by_email
     
-    if (!email) return // Skip if no email available
+    if (!groupKey) return // Skip if no identifier available
     
-    if (!commenterMap.has(email)) {
-      commenterMap.set(email, {
-        email,
+    if (!commenterMap.has(groupKey)) {
+      commenterMap.set(groupKey, {
+        email: displayEmail,
         nickname: comment.by_nickname || '',
         commentCount: 0,
         comments: [],
         isAdmin: !!comment.moderatorId,
       })
     }
-    const commenter = commenterMap.get(email)!
+    const commenter = commenterMap.get(groupKey)!
     commenter.commentCount++
 
     // Mark as admin if any comment has moderatorId
@@ -135,4 +116,4 @@ export default async function handler(
       pageCount,
     },
   })
-}
+})

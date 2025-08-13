@@ -1,44 +1,36 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { getSession } from '../../../../utils.server'
 import { CommentService } from '../../../../service/comment.service'
+import { withProjectAuth } from '../../../../utils/auth-wrappers'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getSession(req)
-  
-  if (!session) {
-    return res.status(401).json({ error: 'Unauthorized' })
+export default withProjectAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session: _session, project, mainLayoutData: _mainLayoutData }) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' })
   }
 
-  const { projectId } = req.query
   const commentService = new CommentService(req)
 
-  if (req.method === 'GET') {
-    try {
-      const page = parseInt(req.query.page as string) || 1
-      const comments = await commentService.getComments(
-        projectId as string,
-        req.headers['x-timezone-offset'] ? parseInt(req.headers['x-timezone-offset'] as string) : 0,
-        {
-          page,
-          pageSize: 10,
-          includeDeletedParents: true,
-          parentId: null, // Only root deleted comments
-        }
-      )
-      
-      // Filter to only show actually deleted comments
-      const deletedComments = {
-        ...comments,
-        data: comments.data.filter(comment => comment.deletedAt)
+  try {
+    const page = parseInt(req.query.page as string) || 1
+    const comments = await commentService.getComments(
+      project.id,
+      req.headers['x-timezone-offset'] ? parseInt(req.headers['x-timezone-offset'] as string) : 0,
+      {
+        page,
+        pageSize: 10,
+        includeDeletedParents: true,
+        parentId: null, // Only root deleted comments
       }
-
-      res.json({ data: deletedComments })
-    } catch (error) {
-      console.error('Error fetching deleted comments:', error)
-      res.status(500).json({ error: 'Failed to fetch deleted comments' })
+    )
+    
+    // Filter to only show actually deleted comments
+    const deletedComments = {
+      ...comments,
+      data: comments.data.filter(comment => comment.deletedAt)
     }
-  } else {
-    res.setHeader('Allow', ['GET'])
-    res.status(405).end(`Method ${req.method} Not Allowed`)
+
+    res.json({ data: deletedComments })
+  } catch (error) {
+    console.error('Error fetching deleted comments:', error)
+    res.status(500).json({ error: 'Failed to fetch deleted comments' })
   }
-}
+})

@@ -1,37 +1,31 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { AuthService } from "../../service/auth.service";
 import { UserService } from "../../service/user.service";
+import { withUserAuth } from "../../utils/auth-wrappers";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withUserAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session }) {
+  if (req.method !== 'PUT') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
 
   const userService = new UserService(req)
-  const authService = new AuthService(req, res)
 
-  if (req.method === 'PUT') {
-    const {
-      notificationEmail,
-      enableNewCommentNotification,
-      displayName
-    } = req.body as {
-      notificationEmail?: string
-      enableNewCommentNotification?: boolean,
-      displayName?: string
-    }
-
-    const user = await authService.authGuard()
-
-    if (!user) {
-      return
-    }
-
-    await userService.update(user.uid, {
-      enableNewCommentNotification,
-      notificationEmail,
-      displayName
-    })
-
-    res.json({
-      message: 'success'
-    })
+  const {
+    notificationEmail,
+    enableNewCommentNotification,
+    displayName
+  } = req.body as {
+    notificationEmail?: string
+    enableNewCommentNotification?: boolean,
+    displayName?: string
   }
-}
+
+  await userService.update(session.uid, {
+    enableNewCommentNotification,
+    notificationEmail,
+    displayName
+  })
+
+  res.json({
+    message: 'success'
+  })
+})

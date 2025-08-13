@@ -1,36 +1,20 @@
-import { Project } from '@prisma/client'
 import { NextApiRequest, NextApiResponse } from 'next'
-import { AuthService } from '../../../../../service/auth.service'
-import { ProjectService } from '../../../../../service/project.service'
 import { prisma } from '../../../../../utils.server'
+import { withProjectAuth } from '../../../../../utils/auth-wrappers'
 
-export default async function handler(
+export default withProjectAuth(async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
+  { session: _session, project, mainLayoutData: _mainLayoutData }
 ) {
   if (req.method !== 'DELETE') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
 
-  const projectService = new ProjectService(req)
-  const authService = new AuthService(req, res)
-  
-  const { projectId } = req.query as { projectId: string }
   const { emails } = req.body as { emails: string[] }
 
   if (!Array.isArray(emails) || emails.length === 0) {
     return res.status(400).json({ message: 'emails must be a non-empty array' })
-  }
-
-  // only owner can delete comments
-  const project = (await projectService.get(projectId, {
-    select: {
-      ownerId: true,
-    },
-  })) as Pick<Project, 'ownerId'>
-
-  if (!(await authService.projectOwnerGuard(project))) {
-    return
   }
 
   try {
@@ -41,7 +25,7 @@ export default async function handler(
           in: emails,
         },
         page: {
-          projectId,
+          projectId: project.id,
         },
         deletedAt: null,
       },
@@ -59,4 +43,4 @@ export default async function handler(
     console.error('Batch delete by email error:', error)
     res.status(500).json({ message: 'Internal server error' })
   }
-}
+})
