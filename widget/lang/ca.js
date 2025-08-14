@@ -15,7 +15,7 @@ window.CUSDIS_LOCALE = {
     content_is_required: 'El contingut és obligatori',
     nickname_is_required: 'El nom és obligatori',
   
-    comment_has_been_sent:
+    first_comment_needs_approval:
       'El teu comentari ha estat enviat. Si us plau, espera la seva aprovació.',
   }
   

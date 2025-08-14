@@ -388,11 +388,17 @@ export class CommentService extends RequestScopeService {
       })
 
       if (parent.by_email) {
-        await tx.commenter.upsert({
-          where: { email: parent.by_email },
-          update: { verifiedAt: new Date() },
-          create: { email: parent.by_email, verifiedAt: new Date() }
-        })
+        console.log('[MODERATOR REPLY] Setting verifiedAt for parent commenter:', parent.by_email)
+        try {
+          const result = await tx.commenter.upsert({
+            where: { email: parent.by_email },
+            update: { verifiedAt: new Date() },
+            create: { email: parent.by_email, verifiedAt: new Date() }
+          })
+          console.log('[MODERATOR REPLY] Successfully set verifiedAt for', parent.by_email, 'result:', { id: result.id, verifiedAt: result.verifiedAt })
+        } catch (e) {
+          console.error('[MODERATOR REPLY] Failed to set verifiedAt for', parent.by_email, 'error:', e)
+        }
       }
 
       return created

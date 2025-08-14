@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
     content_is_required: '內容不能為空白',
     nickname_is_required: '暱稱不能為空白',
   
-    comment_has_been_sent:
+    first_comment_needs_approval:
       '評論已發送，待管理員審核通過後將會展示',
   }

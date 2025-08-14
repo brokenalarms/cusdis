@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Obsah komentáře je vyžadován',
   nickname_is_required: 'Přezdívka je vyžadována',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Váš komentář byl odeslán. Vyčkejte, prosím, na jeho schválení.',
 }

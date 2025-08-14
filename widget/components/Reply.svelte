@@ -18,13 +18,16 @@
   let trapChecked = false // must remain false; bots often toggle all controls
 
   let loading = false
+  let lastSubmissionMessage = ''
 
   export let onSuccess
 
   const api = getContext('api')
-  const setMessage = getContext('setMessage')
   const { appId, pageId, pageUrl, pageTitle } = getContext('attrs')
   const addCommentOptimistically = getContext('addCommentOptimistically')
+  
+  // Reactive: hide message when user starts typing
+  $: showMessage = lastSubmissionMessage && !content.trim()
 
   async function addComment() {
     if (!content) {
@@ -69,11 +72,12 @@
       if (isApproved && typeof addCommentOptimistically === 'function') {
         // Auto-approved: add comment immediately to UI, no message needed
         addCommentOptimistically(comment, parentId)
+        lastSubmissionMessage = ''
         teardown()
       } else {
         // Not approved: show "needs moderation" message
+        lastSubmissionMessage = t('first_comment_needs_approval')
         teardown()
-        setMessage(t('comment_has_been_sent'))
       }
     } finally {
       loading = false
@@ -87,6 +91,14 @@
     onSuccess && onSuccess()
   }
 </script>
+
+{#if showMessage}
+  <div
+    class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104"
+  >
+    {lastSubmissionMessage}
+  </div>
+{/if}
 
 <form class="space-y-6" on:submit|preventDefault={addComment}>
   <div class="sm:grid sm:grid-cols-2 gap-6 sm:gap-12">

@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE= {
   content_is_required: 'Hozzászólás hiányzik!',
   nickname_is_required: 'Név megadása kötelező',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'A hozzászólásod el lett küldve. Kérjük várj a jóváhagyásra.',
 }

@@ -15,7 +15,7 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Заполните текст комментария',
   nickname_is_required: 'Заполните имя',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Комментарий отправлен. Он будет опубликован после модерации.',
   receive_email_notification_of_replies: 'Уведомить по эл. почте о ответах на мой комментарий',
 }

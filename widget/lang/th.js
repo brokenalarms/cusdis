@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'จำเป็นต้องกรอกเนื้อหา',
   nickname_is_required: 'จำเป็นต้องกรอกชื่อเล่น',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'ส่งความเห็นของคุณแล้ว กำลังรอการอนุมัติ',
 }

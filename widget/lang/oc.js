@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Lo contengut es requerit',
   nickname_is_required: 'L’escais es requerit',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Comentari enviat. Esperatz sa validacion.',
 }

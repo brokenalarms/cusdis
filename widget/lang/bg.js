@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Полето е задължително!',
   nickname_is_required: 'Прякорът е задължителен!',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Твоят коментар беше публикуван и ще бъде видим след одобрение.',
 }

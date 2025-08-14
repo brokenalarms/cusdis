@@ -15,7 +15,7 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'コメントを入力してください',
   nickname_is_required: '名前を入力してください',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'コメントは承認後、表示されます',
   receive_email_notification_of_replies: '私のコメントに返信があった時にメールで通知する',
 }

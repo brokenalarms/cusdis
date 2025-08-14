@@ -13,7 +13,6 @@
 
   let loadingComments = true
 
-  let message = ''
 
   let error
 
@@ -23,9 +22,6 @@
     baseURL: attrs.host,
   })
 
-  function setMessage(msg) {
-    message = msg
-  }
 
   onMount(() => {
     function onMessage(e) {
@@ -82,7 +78,6 @@
   setContext('attrs', attrs)
   setContext('refresh', getComments)
   setContext('addCommentOptimistically', addCommentOptimistically)
-  setContext('setMessage', setMessage)
 
   async function getComments(p = 1) {
     loadingComments = true
@@ -118,14 +113,6 @@
 
 {#if !error}
   <div class:dark={theme === 'dark'}>
-    {#if message}
-      <div
-        class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104"
-      >
-        {message}
-      </div>
-    {/if}
-
     <Reply />
 
     <div class="my-8" />

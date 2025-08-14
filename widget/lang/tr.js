@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Yorum gereklidir',
   nickname_is_required: 'İsim gereklidir',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Yorumunuz gönderildi. Lütfen onaylanmasını bekleyin.',
 }

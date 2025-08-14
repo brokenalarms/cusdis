@@ -15,7 +15,7 @@ window.CUSDIS_LOCALE = {
     content_is_required: 'El contenido es obligatorio',
     nickname_is_required: 'El nombre es obligatorio',
   
-    comment_has_been_sent:
+    first_comment_needs_approval:
       'Tu comentario ha sido enviado. Por favor, espera su aprobación.',
     receive_email_notification_of_replies: 'Envíame un email cuando alguien responda a mi comentario',
   }

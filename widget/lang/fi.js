@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Sisältö on pakollinen',
   nickname_is_required: 'Nimi on pakollinen',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Kommenttisi on lähetetty. Odotathan hetken sen hyväksyntää.',
 }

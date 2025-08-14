@@ -15,7 +15,7 @@ window.CUSDIS_LOCALE = {
   content_is_required: '内容不能为空',
   nickname_is_required: '昵称不能为空',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     '评论已发送，管理员审核通过后会展示',
   receive_email_notification_of_replies: '有人回复我的评论时发邮件通知我',
 }

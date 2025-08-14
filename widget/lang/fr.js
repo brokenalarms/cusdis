@@ -15,7 +15,7 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Commentaire requis',
   nickname_is_required: 'Pseudonyme requis',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Votre commentaire a été publié. Attendez son approbation.',
   receive_email_notification_of_replies: 'M\'envoyer un email quand quelqu\'un répond à mon commentaire',
 }

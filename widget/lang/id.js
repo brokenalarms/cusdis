@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Konten wajib diisi',
   nickname_is_required: 'Nama wajib diisi',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Komentar berhasil terkirim. Mohon tunggu persetujuan.',
 }

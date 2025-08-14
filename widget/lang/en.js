@@ -16,7 +16,7 @@ export default {
   nickname_is_required: 'Nickname is required',
   email_is_required: 'Email is required',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Your comment has been sent. Please wait for approval.',
   receive_email_notification_of_replies: 'Email me when someone replies to my comment',
 }

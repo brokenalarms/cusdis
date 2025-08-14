@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE =  {
   content_is_required: 'Uzupełnij treść komentarza',
   nickname_is_required: 'Pole Nickname jest wymagane',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Twój komentarz został przesłany. Oczekuje na zatwierdzenie.',
 }

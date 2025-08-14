@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
     content_is_required: 'المحتوى مطلوب',
     nickname_is_required: 'الإسم مطلوب',
   
-    comment_has_been_sent:
+    first_comment_needs_approval:
       '.تم ارسال تعليقك بنجاح , فى انتظار الموافقه عليه',
   }

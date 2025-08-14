@@ -15,6 +15,6 @@ window.CUSDIS_LOCALE = {
   content_is_required: 'Hãy nhập nội dung',
   nickname_is_required: 'Hãy nhập nickname (tên)',
 
-  comment_has_been_sent:
+  first_comment_needs_approval:
     'Bình luận của bạn đã được gửi đi và đang chờ được phê duyệt.',
 }
