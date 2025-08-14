@@ -5,7 +5,6 @@ import { getSession, prisma } from "../../utils.server";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const projectService = new ProjectService(req)
-  const subscriptionService = new SubscriptionService()
   const session = await getSession(req)
 
   if (req.method === 'POST') {

@@ -1,8 +1,6 @@
-import { Anchor, Box, Button, Center, Group, List, Stack, Text, Checkbox } from '@mantine/core'
+import { Button, List, Stack, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { modals } from '@mantine/modals'
-import { isAdmin } from '../../../../utils/adminHelpers'
-import { MODFlag } from '../../../../components/MODFlag'
 import { useAdminFilter } from '../../../../hooks/useAdminFilter'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
@@ -11,6 +9,7 @@ import React from 'react'
 import { AiOutlineReload, AiOutlineDelete } from 'react-icons/ai'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
+import { Comment } from '../../../../components/Comment'
 import { UserSession } from '../../../../service'
 import { CommentItem, CommentWrapper } from '../../../../service/comment.service'
 import { ProjectService } from '../../../../service/project.service'
@@ -271,81 +270,13 @@ function DeletedCommentsPage(props: {
     >
       {filteredComments.map((comment) => (
         <List.Item key={comment.id}>
-          <Group align="flex-start" spacing={12}>
-            <Checkbox
-              aria-label="Select comment"
-              checked={isSelected(comment.id)}
-              onChange={() => toggleSelected(comment.id)}
-            />
-            <Stack>
-              <Stack spacing={4}>
-                <Group
-                  spacing={8}
-                  sx={{
-                    fontSize: 14,
-                  }}
-                >
-                  <Text
-                    sx={{
-                      fontWeight: 500,
-                      color: 'red',
-                    }}
-                  >
-                    [DELETED] {comment.by_nickname}
-                  </Text>
-                  {isAdmin(comment) && <MODFlag />}
-                  <Text
-                    sx={{
-                      fontWeight: 400,
-                      color: 'gray',
-                    }}
-                  >
-                    {comment.by_email}
-                  </Text>
-                  {comment.by_email && !comment.isEmailVerified && (
-                    <Text
-                      sx={{
-                        fontWeight: 500,
-                        color: 'orange',
-                        fontSize: 11,
-                      }}
-                    >
-                      UNVERIFIED
-                    </Text>
-                  )}
-                </Group>
-                <Group
-                  spacing={8}
-                  sx={{
-                    fontSize: 12,
-                  }}
-                >
-                  <Text sx={{}}>{comment.parsedCreatedAt}</Text>
-                  <Text>on</Text>
-                  <Anchor href={comment.page.url} target="_blank">
-                    {comment.page.slug}
-                  </Anchor>
-                </Group>
-                <Box
-                  sx={{
-                    marginTop: 8,
-                    padding: 8,
-                    backgroundColor: '#f8f8f8',
-                    borderLeft: '4px solid #red',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  {comment.content}
-                </Box>
-                {comment.replies.commentCount > 0 && (
-                  <Text size="xs" color="dimmed" sx={{ marginTop: 8 }}>
-                    {comment.replies.commentCount} repl
-                    {comment.replies.commentCount === 1 ? 'y' : 'ies'} (will be
-                    affected by restore/delete)
-                  </Text>
-                )}
-              </Stack>
-              <Group sx={{ alignSelf: 'flex-start' }}>
+          <Comment
+            comment={comment}
+            showCheckbox={true}
+            isSelected={isSelected(comment.id)}
+            onToggleSelected={() => toggleSelected(comment.id)}
+            actions={
+              <>
                 <Button
                   loading={
                     restoreCommentMutation.isLoading &&
@@ -364,8 +295,7 @@ function DeletedCommentsPage(props: {
                 <Button
                   loading={
                     hardDeleteCommentMutation.isLoading &&
-                    hardDeleteCommentMutation.variables?.commentId ===
-                      comment.id
+                    hardDeleteCommentMutation.variables?.commentId === comment.id
                   }
                   onClick={() => {
                     modals.openConfirmModal({
@@ -404,9 +334,9 @@ function DeletedCommentsPage(props: {
                 >
                   Hard Delete
                 </Button>
-              </Group>
-            </Stack>
-          </Group>
+              </>
+            }
+          />
         </List.Item>
       ))}
     </AdminPageLayout>

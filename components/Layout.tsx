@@ -1,20 +1,20 @@
-import React, { useCallback, useState } from "react"
-import { useMutation, useQuery } from "react-query"
-import { useRouter } from "next/router"
-import { AiOutlineLogout, AiOutlineSetting, AiOutlineFileText, AiOutlineAlert, AiOutlinePlus, AiOutlineComment, AiOutlineCode, AiOutlineRight, AiOutlineDown, AiOutlineFile, AiOutlineQuestion, AiOutlineQuestionCircle, AiOutlineDelete } from 'react-icons/ai'
-import { signout, signOut } from "next-auth/client"
-import { Anchor, AppShell, Avatar, Badge, Box, Button, Code, Grid, Group, Header, List, Menu, Modal, Navbar, NavLink, Paper, Progress, ScrollArea, Select, Space, Stack, Switch, Text, TextInput, Title, Loader } from "@mantine/core"
-import Link from "next/link"
-import type { ProjectServerSideProps } from "../pages/dashboard/project/[projectId]/settings"
+import { Anchor, AppShell, Badge, Box, Button, Code, Grid, Group, Header, List, Loader, Menu, Modal, Navbar, NavLink, Paper, Stack, Switch, Text, TextInput, Title } from "@mantine/core"
+import { useClipboard, useDisclosure } from '@mantine/hooks'
 import { modals } from "@mantine/modals"
-import { useClipboard, useDisclosure } from '@mantine/hooks';
 import { notifications } from "@mantine/notifications"
-import { apiClient } from "../utils.client"
-import { useForm } from "react-hook-form"
-import { MainLayoutData } from "../service/viewData.service"
-import { Head } from "./Head"
 import dayjs from "dayjs"
+import { signOut } from "next-auth/client"
+import Link from "next/link"
+import { useRouter } from "next/router"
+import React from "react"
+import { useForm } from "react-hook-form"
+import { AiOutlineCode, AiOutlineComment, AiOutlineDelete, AiOutlineDown, AiOutlineFileText, AiOutlinePlus, AiOutlineQuestionCircle, AiOutlineRight, AiOutlineSetting, AiOutlineUser } from 'react-icons/ai'
+import { useMutation } from "react-query"
 import { usageLimitation } from "../config.common"
+import type { ProjectServerSideProps } from "../pages/dashboard/project/[projectId]/settings"
+import { MainLayoutData } from "../service/viewData.service"
+import { apiClient } from "../utils.client"
+import { Head } from "./Head"
 
 // From https://stackoverflow.com/questions/46155/how-to-validate-an-email-address-in-javascript
 function validateEmail(email) {
@@ -202,25 +202,49 @@ export function MainLayout(props: {
     const isDeletedCommentsActive = currentPath.includes('/deleted-comments')
     const isSettingsActive = currentPath.includes('/settings')
     
+    const handleNavClick = (href: string, isActive: boolean) => (e: React.MouseEvent) => {
+      if (isActive) {
+        e.preventDefault()
+        return
+      }
+      router.push(href)
+    }
+    
     return (
       <Stack>
         <Stack spacing={8} p="sm">
-          <Link href={`/dashboard/project/${projectId}/comments`} style={{ textDecoration: 'none' }}>
-            <NavLink active={isCommentsActive} styles={styles} label="Comments" icon={<AiOutlineComment />}>
-            </NavLink>
-          </Link>
-          <Link href={`/dashboard/project/${projectId}/commenters`} style={{ textDecoration: 'none' }}>
-            <NavLink active={isCommentersActive} styles={styles} label="Commenters" icon={<AiOutlineComment />}>
-            </NavLink>
-          </Link>
-          <Link href={`/dashboard/project/${projectId}/deleted-comments`} style={{ textDecoration: 'none' }}>
-            <NavLink active={isDeletedCommentsActive} styles={styles} label="Deleted Comments" icon={<AiOutlineDelete />}>
-            </NavLink>
-          </Link>
-          <Link href={`/dashboard/project/${projectId}/settings`} style={{ textDecoration: 'none' }}>
-            <NavLink active={isSettingsActive} styles={styles} label="Site settings" icon={<AiOutlineSetting />}>
-            </NavLink>
-          </Link>
+          <NavLink 
+            active={isCommentsActive} 
+            styles={styles} 
+            label="Comments" 
+            icon={<AiOutlineComment />}
+            onClick={handleNavClick(`/dashboard/project/${projectId}/comments`, isCommentsActive)}
+            sx={{ cursor: 'pointer' }}
+          />
+          <NavLink 
+            active={isCommentersActive} 
+            styles={styles} 
+            label="Commenters" 
+            icon={<AiOutlineUser />}
+            onClick={handleNavClick(`/dashboard/project/${projectId}/commenters`, isCommentersActive)}
+            sx={{ cursor: 'pointer' }}
+          />
+          <NavLink 
+            active={isDeletedCommentsActive} 
+            styles={styles} 
+            label="Deleted Comments" 
+            icon={<AiOutlineDelete />}
+            onClick={handleNavClick(`/dashboard/project/${projectId}/deleted-comments`, isDeletedCommentsActive)}
+            sx={{ cursor: 'pointer' }}
+          />
+          <NavLink 
+            active={isSettingsActive} 
+            styles={styles} 
+            label="Site settings" 
+            icon={<AiOutlineSetting />}
+            onClick={handleNavClick(`/dashboard/project/${projectId}/settings`, isSettingsActive)}
+            sx={{ cursor: 'pointer' }}
+          />
           <NavLink component="a" href="/doc" target={'_blank'} label="Documentation" icon={<AiOutlineFileText />}>
           </NavLink>
         </Stack>

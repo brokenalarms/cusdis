@@ -32,6 +32,8 @@ export type CommentItem = Comment & {
   parsedContent: string
   parsedCreatedAt: string
   isEmailVerified?: boolean
+  _isWebSocketUpdate?: boolean
+  _webSocketAction?: 'created' | 'updated' | 'deleted' | 'restored'
 }
 
 export class CommentService extends RequestScopeService {
