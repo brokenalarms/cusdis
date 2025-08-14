@@ -24,4 +24,4 @@ export default withUserAuth(async function handler(req: NextApiRequest, res: Nex
       data: projects
     })
   }
-}
+})
