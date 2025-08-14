@@ -3,9 +3,6 @@ import { UserService } from "../../service/user.service";
 import { withUserAuth } from "../../utils/auth-wrappers";
 
 export default withUserAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session }) {
-  if (req.method !== 'PUT') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const userService = new UserService(req)
 
@@ -28,4 +25,4 @@ export default withUserAuth(async function handler(req: NextApiRequest, res: Nex
   res.json({
     message: 'success'
   })
-})
+}, ['PUT'])

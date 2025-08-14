@@ -1,30 +1,25 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { AuthService } from '../../../../service/auth.service'
 import { CommentService } from '../../../../service/comment.service'
+import { withProjectAuth } from '../../../../utils/auth-wrappers'
 
-export default async function handler(
+export default withProjectAuth(async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
+  { session, project }
 ) {
   const commentService = new CommentService(req)
-  const authService = new AuthService(req, res)
-
-  if (req.method === 'POST') {
-    const body = req.body as {
-      content: string
-    }
-    const commentId = req.query.commentId as string
-
-    const project = await commentService.getProject(commentId)
-    if (!(await authService.projectOwnerGuard(project))) {
-      return
-    }
-    const created = await commentService.addCommentAsModerator(
-      commentId,
-      body.content,
-    )
-    res.json({
-      data: created,
-    })
+  
+  const body = req.body as {
+    content: string
   }
-}
+  const commentId = req.query.commentId as string
+
+  const created = await commentService.addCommentAsModerator(
+    commentId,
+    body.content,
+  )
+  
+  res.json({
+    data: created,
+  })
+}, ['POST'], { commentId: true })
