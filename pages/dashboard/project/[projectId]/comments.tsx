@@ -7,7 +7,9 @@ import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { AiOutlineCheck, AiOutlineSmile } from 'react-icons/ai'
-import { useMutation, useQuery, useQueryClient } from 'react-query'
+import { useMutation, useQueryClient } from 'react-query'
+import { useQuery } from 'react-query'
+import { useWebSocketForQuery, updateCommentList } from '../../../../hooks/useQueryWithWebSocket'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { Comment } from '../../../../components/Comment'
 import { UserSession } from '../../../../service'
@@ -293,8 +295,11 @@ function ProjectPage(props: {
   const router = useRouter()
   const queryClient = useQueryClient()
 
-  const getCommentsQuery = useQuery(['getComments', { projectId: router.query.projectId as string, page }], getComments, {
-  })
+  const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
+  const getCommentsQuery = useQuery(queryKey, getComments)
+  
+  // Add WebSocket listener for this specific query
+  useWebSocketForQuery(router.query.projectId as string, queryKey, updateCommentList)
 
 
   // Selection state for batch actions

@@ -75,6 +75,7 @@
     "tailwindcss": "^2.1.1",
     "turndown": "^7.0.0",
     "vite": "^2.1.5",
+    "ws": "^8.18.3",
     "xml2json": "^0.12.0"
   },
   "devDependencies": {

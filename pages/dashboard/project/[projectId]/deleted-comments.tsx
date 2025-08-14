@@ -7,7 +7,8 @@ import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { AiOutlineReload, AiOutlineDelete } from 'react-icons/ai'
-import { useMutation, useQuery, useQueryClient } from 'react-query'
+import { useMutation, useQueryClient } from 'react-query'
+import { useQuery } from 'react-query'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { Comment } from '../../../../components/Comment'
 import { UserSession } from '../../../../service'
@@ -63,7 +64,7 @@ function DeletedCommentsPage(props: {
   const [page, setPage] = React.useState(1)
   const router = useRouter()
 
-  const getDeletedCommentsQuery = useQuery(['getDeletedComments', { projectId: router.query.projectId as string, page }], getDeletedComments, {
+  const getDeletedCommentsQuery = useQueryWithWebSocket(['getDeletedComments', { projectId: router.query.projectId as string, page }], getDeletedComments, updateCommentList, {
   })
 
   // Selection state for batch actions

@@ -5,7 +5,9 @@ import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
-import { useMutation, useQuery, useQueryClient } from 'react-query'
+import { useMutation, useQueryClient } from 'react-query'
+import { useQuery } from 'react-query'
+import { useWebSocketForQuery, updateCommentersList } from '../../../../hooks/useQueryWithWebSocket'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { MODFlag } from '../../../../components/MODFlag'
 import { NewBadge } from '../../../../components/NewBadge'
@@ -149,7 +151,7 @@ function CommentersPage(props: {
   const [page, setPage] = React.useState(1)
   const router = useRouter()
 
-  const getCommentersQuery = useQuery(['getCommenters', { projectId: router.query.projectId as string, page }], getCommenters, {
+  const getCommentersQuery = useQueryWithWebSocket(['getCommenters', { projectId: router.query.projectId as string, page }], getCommenters, updateCommentersList, {
   })
 
   // Selection state for batch actions
