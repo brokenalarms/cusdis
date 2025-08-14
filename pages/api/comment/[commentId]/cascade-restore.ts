@@ -7,9 +7,6 @@ export default withUserAuth(async function handler(
   res: NextApiResponse,
   { session }
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   // Accept either single ID from URL or array from body
   const singleId = req.query.commentId as string
@@ -41,4 +38,4 @@ export default withUserAuth(async function handler(
     console.error('Cascade restore error:', error)
     res.status(500).json({ message: 'Internal server error' })
   }
-})
+}, ['POST'])

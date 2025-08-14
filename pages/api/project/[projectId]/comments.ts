@@ -8,9 +8,6 @@ export default withProjectAuth(async function handler(
   res: NextApiResponse,
   { session: _, project },
 ) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const commentService = new CommentService(req)
   const { page } = req.query as { page: string }
@@ -47,4 +44,4 @@ export default withProjectAuth(async function handler(
   res.json({
     data: comments,
   })
-})
+}, ['GET'])

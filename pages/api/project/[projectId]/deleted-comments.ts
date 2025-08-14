@@ -7,9 +7,6 @@ export default withProjectAuth(async function handler(
   res: NextApiResponse,
   { session: _session, project },
 ) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const commentService = new CommentService(req)
 
@@ -34,4 +31,4 @@ export default withProjectAuth(async function handler(
     console.error('Error fetching deleted comments:', error)
     res.status(500).json({ error: 'Failed to fetch deleted comments' })
   }
-})
+}, ['GET'])

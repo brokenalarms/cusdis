@@ -39,9 +39,9 @@ export default withTokenAuth(async function handler(
       // Then append reply
       const created = await commentService.addCommentAsModerator(
         tokenBody.commentId,
+        replyContent,
         {
-          content: replyContent,
-          by_nickname: tokenBody.owner.displayName,
+          owner: tokenBody.owner
         }
       )
       await usageService.incr(UsageLabel.ApproveComment)

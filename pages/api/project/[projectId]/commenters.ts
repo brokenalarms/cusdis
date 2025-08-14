@@ -8,9 +8,6 @@ export default withProjectAuth(async function handler(
   res: NextApiResponse,
   { session, project }
 ) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const { page } = req.query as { page: string }
 
@@ -116,4 +113,4 @@ export default withProjectAuth(async function handler(
       pageCount,
     },
   })
-})
+}, ['GET'])

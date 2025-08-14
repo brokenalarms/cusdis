@@ -84,6 +84,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return deleteHandler(req, res)
     
   } else {
-    res.status(405).json({ message: 'Method not allowed' })
+    res.status(405).json({ message: `${req.method} not allowed` })
   }
 }

@@ -7,9 +7,6 @@ export default withUserAuth(async function handler(
   res: NextApiResponse,
   { session }
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const commentService = new CommentService(req)
   const { commentIds } = req.body as { commentIds: string[] }
@@ -29,4 +26,4 @@ export default withUserAuth(async function handler(
     console.error('Unapprove error:', error)
     res.status(500).json({ message: 'Internal server error' })
   }
-})
+}, ['POST'])

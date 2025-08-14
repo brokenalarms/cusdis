@@ -15,9 +15,6 @@ export default withProjectAuth(async function handler(
   res: NextApiResponse,
   { session: _session, project },
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const form = new formidable.IncomingForm()
   const dataService = new DataService()
@@ -43,4 +40,4 @@ export default withProjectAuth(async function handler(
       },
     })
   })
-})
+}, ['POST'])

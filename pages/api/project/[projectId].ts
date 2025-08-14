@@ -4,9 +4,6 @@ import { prisma } from "../../../utils.server";
 import { withProjectAuth } from "../../../utils/auth-wrappers";
 
 export default withProjectAuth(async function handler(req: NextApiRequest, res: NextApiResponse, { session: _session, project }) {
-  if (req.method !== 'PUT' && req.method !== 'DELETE') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   if (req.method === 'PUT') {
     const body = req.body as {
@@ -37,4 +34,4 @@ export default withProjectAuth(async function handler(req: NextApiRequest, res: 
       message: 'success'
     })
   }
-})
+}, ['PUT', 'DELETE'])

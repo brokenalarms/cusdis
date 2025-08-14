@@ -7,9 +7,6 @@ export default withProjectAuth(async function handler(
   res: NextApiResponse,
   { session: _session, project },
 ) {
-  if (req.method !== 'DELETE') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const { emails } = req.body as { emails: string[] }
 
@@ -43,4 +40,4 @@ export default withProjectAuth(async function handler(
     console.error('Batch delete by email error:', error)
     res.status(500).json({ message: 'Internal server error' })
   }
-})
+}, ['DELETE'])

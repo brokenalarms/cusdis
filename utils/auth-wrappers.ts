@@ -5,14 +5,18 @@ import { TokenService, SecretKey } from '../service/token.service'
 import { prisma } from '../utils.server'
 
 export function withUserAuth(
-  handler: (req: NextApiRequest, res: NextApiResponse, context: { session: any }) => Promise<void>,
-  allowedMethods?: string[]
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse,
+    context: { session: any },
+  ) => Promise<void>,
+  allowedMethods?: string[],
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     if (allowedMethods && !allowedMethods.includes(req.method!)) {
-      return res.status(405).json({ message: 'Method not allowed' })
+      return res.status(405).json({ message: `${req.method} not allowed` })
     }
-    
+
     const authService = new AuthService(req, res)
     const session = await authService.authGuard() // throws on failure
     return handler(req, res, { session })
@@ -20,18 +24,22 @@ export function withUserAuth(
 }
 
 export function withProjectAuth(
-  handler: (req: NextApiRequest, res: NextApiResponse, context: { session: any, project: any }) => Promise<void>,
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse,
+    context: { session: any; project: any },
+  ) => Promise<void>,
   allowedMethods?: string[],
-  options?: { commentId?: boolean }
+  options?: { commentId?: boolean },
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     if (allowedMethods && !allowedMethods.includes(req.method!)) {
-      return res.status(405).json({ message: 'Method not allowed' })
+      return res.status(405).json({ message: `${req.method} not allowed` })
     }
-    
+
     const authService = new AuthService(req, res)
     let project
-    
+
     if (options?.commentId) {
       // Get project via commentId
       const { CommentService } = await import('../service/comment.service')
@@ -47,9 +55,9 @@ export function withProjectAuth(
         },
       })
     }
-    
+
     const session = await authService.projectOwnerGuard(project) // throws on failure
-    
+
     return handler(req, res, { session, project })
   }
 }
@@ -66,7 +74,7 @@ export function withTokenAuth(
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     if (options.allowedMethods && !options.allowedMethods.includes(req.method!)) {
-      return res.status(405).json({ message: 'Method not allowed' })
+      return res.status(405).json({ message: `${req.method} not allowed` })
     }
     
     const token = req.query.token as string

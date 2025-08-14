@@ -7,9 +7,6 @@ export default withUserAuth(async function handler(
   res: NextApiResponse,
   { session }
 ) {
-  if (req.method !== 'DELETE') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
 
   const commentService = new CommentService(req)
 
@@ -36,4 +33,4 @@ export default withUserAuth(async function handler(
     console.error('Cascade hard delete error:', error)
     res.status(500).json({ message: 'Internal server error' })
   }
-})
+}, ['DELETE'])
