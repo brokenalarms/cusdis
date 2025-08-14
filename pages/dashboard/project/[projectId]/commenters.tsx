@@ -154,8 +154,15 @@ function CommentersPage(props: {
   const [page, setPage] = React.useState(1)
   const router = useRouter()
 
-  const getCommentersQuery = useQueryWithWebSocket(['getCommenters', { projectId: router.query.projectId as string, page }], getCommenters, updateCommentersList, {
-  })
+  const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page }]
+  const getCommentersQuery = useQuery(queryKey, getCommenters)
+  
+  // Add WebSocket listener for this specific query
+  useQueryWithWebSocket(
+    router.query.projectId as string,
+    queryKey,
+    updateCommentersList,
+  )
 
   // Selection state for batch actions
   const [selectedEmails, setSelectedEmails] = React.useState<string[]>([])

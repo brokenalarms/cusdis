@@ -185,7 +185,7 @@ export default apiHandler()
     // If this is a reply that became approved immediately, notify the parent commenter (if opted in)
     if (isAutoApproved && body.parentId) {
       const commentService = new CommentService(req)
-      await commentService.hookService.approveComment(comment.id, body.parentId)
+      await commentService.approve(comment.id)
     }
 
     // If this commenter isn't auto-approved yet, or they have verified their email, send a one-time email verification

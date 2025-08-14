@@ -17,6 +17,7 @@ import { ProjectService } from '../../../../service/project.service'
 import { MainLayoutData, ViewDataService } from '../../../../service/viewData.service'
 import { apiClient } from '../../../../utils.client'
 import { getSession } from '../../../../utils.server'
+import { useQueryWithWebSocket, updateCommentList } from '../../../../hooks/useQueryWithWebSocket'
 
 const getDeletedComments = async ({ queryKey }) => {
   const [_key, { projectId, page }] = queryKey
@@ -64,8 +65,15 @@ function DeletedCommentsPage(props: {
   const [page, setPage] = React.useState(1)
   const router = useRouter()
 
-  const getDeletedCommentsQuery = useQueryWithWebSocket(['getDeletedComments', { projectId: router.query.projectId as string, page }], getDeletedComments, updateCommentList, {
-  })
+  const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
+  const getDeletedCommentsQuery = useQuery(queryKey, getDeletedComments)
+  
+  // Add WebSocket listener for this specific query
+  useQueryWithWebSocket(
+    router.query.projectId as string,
+    queryKey,
+    updateCommentList,
+  )
 
   // Selection state for batch actions
   const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([])
