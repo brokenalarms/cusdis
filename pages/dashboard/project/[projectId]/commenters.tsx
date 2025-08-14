@@ -7,10 +7,6 @@ import { useRouter } from 'next/router'
 import React from 'react'
 import { useMutation, useQueryClient } from 'react-query'
 import { useQuery } from 'react-query'
-import {
-  useQueryWithWebSocket,
-  updateCommentersList,
-} from '../../../../hooks/useQueryWithWebSocket'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { MODFlag } from '../../../../components/MODFlag'
 import { NewBadge } from '../../../../components/NewBadge'
@@ -156,13 +152,6 @@ function CommentersPage(props: {
 
   const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page }]
   const getCommentersQuery = useQuery(queryKey, getCommenters)
-  
-  // Add WebSocket listener for this specific query
-  useQueryWithWebSocket(
-    router.query.projectId as string,
-    queryKey,
-    updateCommentersList,
-  )
 
   // Selection state for batch actions
   const [selectedEmails, setSelectedEmails] = React.useState<string[]>([])

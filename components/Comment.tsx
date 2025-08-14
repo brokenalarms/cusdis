@@ -2,7 +2,6 @@ import { Anchor, Box, Checkbox, Group, Stack, Text } from '@mantine/core'
 import React from 'react'
 import { isAdmin } from '../utils/adminHelpers'
 import { MODFlag } from './MODFlag'
-import { NewBadge } from './NewBadge'
 import { CommentItem } from '../service/comment.service'
 
 interface CommentProps {
@@ -41,7 +40,6 @@ export const Comment: React.FC<CommentProps> = ({
               {isDeleted && '[DELETED] '}{comment.by_nickname}
             </Text>
             {isAdmin(comment) && <MODFlag />}
-            {comment._isWebSocketUpdate && <NewBadge action={comment._webSocketAction} />}
             <Text sx={{
               fontWeight: 400,
               color: 'gray'
