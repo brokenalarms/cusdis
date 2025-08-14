@@ -295,12 +295,12 @@ export class CommentService extends RequestScopeService {
     let shouldAutoApprove = false
     try {
       if (body.email) {
-        const verifiedUser = await prisma.user.findFirst({
+        const verifiedCommenter = await prisma.commenter.findFirst({
           where: {
             email: body.email,
-            emailVerified: { not: null },
+            verifiedAt: { not: null },
           },
-          select: { id: true },
+          select: { id: true, verifiedAt: true },
         })
 
         const priorApproved = await prisma.comment.findFirst({
@@ -312,7 +312,17 @@ export class CommentService extends RequestScopeService {
           select: { id: true },
         })
         
-        shouldAutoApprove = Boolean(verifiedUser && priorApproved)
+        console.log('[AUTO-APPROVE DEBUG]', {
+          email: body.email,
+          projectId,
+          verifiedCommenter: Boolean(verifiedCommenter),
+          verifiedAt: verifiedCommenter?.verifiedAt,
+          priorApproved: Boolean(priorApproved),
+          priorApprovedId: priorApproved?.id
+        })
+        
+        shouldAutoApprove = Boolean(verifiedCommenter && priorApproved)
+        console.log('[AUTO-APPROVE RESULT]', { shouldAutoApprove })
       }
     } catch (e) {
       console.warn('auto-approve check failed', e)
@@ -321,10 +331,14 @@ export class CommentService extends RequestScopeService {
     // Apply auto-approval if conditions met
     let finalComment = created
     if (shouldAutoApprove) {
+      console.log('[AUTO-APPROVE] Applying auto-approval for comment', created.id)
       finalComment = await prisma.comment.update({
         where: { id: created.id },
         data: { approved: true },
       })
+      console.log('[AUTO-APPROVE] Successfully auto-approved comment', finalComment.id, 'approved:', finalComment.approved)
+    } else {
+      console.log('[AUTO-APPROVE] Not auto-approving comment', created.id)
     }
 
     // Trigger hooks with final state
@@ -410,12 +424,18 @@ export class CommentService extends RequestScopeService {
 
       // Handle email verification for all unique emails
       const uniqueEmails = [...new Set(comments.map(c => c.by_email).filter(Boolean))]
+      console.log('[ADMIN APPROVE] Setting verifiedAt for emails:', uniqueEmails)
       for (const email of uniqueEmails) {
-        await tx.commenter.upsert({
-          where: { email },
-          update: { verifiedAt: new Date() },
-          create: { email, verifiedAt: new Date() }
-        })
+        try {
+          const result = await tx.commenter.upsert({
+            where: { email },
+            update: { verifiedAt: new Date() },
+            create: { email, verifiedAt: new Date() }
+          })
+          console.log('[ADMIN APPROVE] Successfully set verifiedAt for', email, 'result:', { id: result.id, verifiedAt: result.verifiedAt })
+        } catch (e) {
+          console.error('[ADMIN APPROVE] Failed to set verifiedAt for', email, 'error:', e)
+        }
       }
 
       // Trigger hooks for each comment (outside transaction since hooks may have side effects)

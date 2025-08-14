@@ -67,11 +67,11 @@
       const isApproved = comment && comment.approved === true
 
       if (isApproved && typeof addCommentOptimistically === 'function') {
+        // Auto-approved: add comment immediately to UI, no message needed
         addCommentOptimistically(comment, parentId)
         teardown()
-        setMessage(t('comment_has_been_sent'))
       } else {
-        // For non-approved comments, keep existing behavior
+        // Not approved: show "needs moderation" message
         teardown()
         setMessage(t('comment_has_been_sent'))
       }
