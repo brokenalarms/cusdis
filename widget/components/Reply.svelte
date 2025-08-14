@@ -18,7 +18,10 @@
   let trapChecked = false // must remain false; bots often toggle all controls
 
   let loading = false
-  let lastSubmissionMessage = ''
+  let showingResult = false
+  let resultComment = null
+  let resultMessage = ''
+  let showApprovalMessage = false
 
   export let onSuccess
 
@@ -26,8 +29,13 @@
   const { appId, pageId, pageUrl, pageTitle } = getContext('attrs')
   const addCommentOptimistically = getContext('addCommentOptimistically')
   
-  // Reactive: hide message when user starts typing
-  $: showMessage = lastSubmissionMessage && !content.trim()
+  // Reactive: hide old message when user starts typing in ANY field (for persistent root form)
+  $: showMessage = !onSuccess && showApprovalMessage && resultMessage && !content.trim() && !nickname.trim() && !email.trim()
+  
+  // Reset approval message flag when user starts typing
+  $: if (content.trim() || nickname.trim() || email.trim()) {
+    showApprovalMessage = false
+  }
 
   async function addComment() {
     if (!content) {
@@ -70,37 +78,97 @@
       const isApproved = comment && comment.approved === true
 
       if (isApproved && typeof addCommentOptimistically === 'function') {
-        // Auto-approved: add comment immediately to UI, no message needed
+        // Auto-approved: add comment immediately to UI
         addCommentOptimistically(comment, parentId)
-        lastSubmissionMessage = ''
-        teardown()
+        clearForm()
+        
+        if (onSuccess) {
+          // Nested reply: show the approved comment
+          resultComment = comment
+          showingResult = true
+          notifySuccess(true) // Notify parent with approval status
+        } else {
+          // Root form: clear any previous message
+          resultMessage = ''
+        }
       } else {
-        // Not approved: show "needs moderation" message
-        lastSubmissionMessage = t('first_comment_needs_approval')
-        teardown()
+        // Not approved: show "needs approval" message
+        const message = t('first_comment_needs_approval')
+        clearForm()
+        
+        if (onSuccess) {
+          // Nested reply: show message and let parent decide what to do
+          showingResult = true
+          resultComment = null
+          resultMessage = message
+          notifySuccess(false) // Notify parent - successful submission but not approved
+        } else {
+          // Root form: show message above form
+          resultMessage = message
+          showApprovalMessage = true
+        }
       }
     } finally {
       loading = false
     }
   }
 
-  function teardown() {
+  function clearForm() {
     content = ''
     nickname = ''
     email = ''
-    onSuccess && onSuccess()
+  }
+
+  function notifySuccess(approved = false) {
+    if (onSuccess) {
+      onSuccess(approved)
+    }
   }
 </script>
 
-{#if showMessage}
-  <div
-    class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104"
-  >
-    {lastSubmissionMessage}
-  </div>
-{/if}
+{#if showingResult}
+  <!-- DEBUG: showingResult={showingResult}, resultComment={!!resultComment}, resultMessage={resultMessage} -->
+  <!-- Show result after submission for nested replies -->
+  {#if resultComment}
+    <!-- Show the approved comment -->
+    <article class="pl-6 py-4 text-base bg-white rounded-lg mb-4 dark:bg-black">
+      <footer class="flex justify-between items-center mb-2">
+        <div class="flex items-center">
+          <p class="inline-flex items-center mr-3 text-sm text-gray-900 dark:text-white font-semibold">
+            {resultComment?.moderator?.displayName ?? resultComment?.by_nickname}
+            {#if resultComment?.moderator}
+              <span class="ml-2 px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded">{t('mod_badge')}</span>
+            {/if}
+          </p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            <time pubdate datetime={resultComment?.parsedCreatedAt}>{resultComment?.parsedCreatedAt}</time>
+          </p>
+        </div>
+      </footer>
+      <p class="text-gray-500 dark:text-gray-400">{@html resultComment?.parsedContent}</p>
+    </article>
+  {:else}
+    <!-- Show submission message -->
+    <!-- DEBUG MESSAGE: This should show when resultComment is null -->
+    <div
+      class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104"
+      style="border: 2px solid red;"
+    >
+      MESSAGE: {resultMessage}
+    </div>
+  {/if}
+{:else}
+  <!-- Show persistent message for root form -->
+  {#if showMessage}
+    <div
+      class="my-3 mx-auto text-center text-sm bg-gray-200 py-3 px-4 font-bold dark:bg-transparent dark:border dark:border-gray-100 dark:text-white rounded-xl transition-transform duration-300 ease-in-out sm:hover:scale-104"
+    >
+      {resultMessage}
+    </div>
+  {/if}
 
-<form class="space-y-6" on:submit|preventDefault={addComment}>
+  <!-- Show the form -->
+  <form class="space-y-6" on:submit|preventDefault={addComment}>
   <div class="sm:grid sm:grid-cols-2 gap-6 sm:gap-12">
     <div>
       <label
@@ -254,3 +322,4 @@
     </button>
   </div>
 </form>
+{/if}

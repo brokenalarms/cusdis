@@ -43,8 +43,11 @@
     <div class="mt-4 pl-4 border-l-2 border-gray-200">
       <Reply
         parentId={comment.id}
-        onSuccess={() => {
-          showReplyForm = false
+        onSuccess={(approved) => {
+          if (approved) {
+            showReplyForm = false
+          }
+          // If not approved, keep form visible so user can see the message
         }}
       />
     </div>
