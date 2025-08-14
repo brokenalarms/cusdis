@@ -7,7 +7,10 @@ import { useRouter } from 'next/router'
 import React from 'react'
 import { useMutation, useQueryClient } from 'react-query'
 import { useQuery } from 'react-query'
-import { useWebSocketForQuery, updateCommentersList } from '../../../../hooks/useQueryWithWebSocket'
+import {
+  useQueryWithWebSocket,
+  updateCommentersList,
+} from '../../../../hooks/useQueryWithWebSocket'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { MODFlag } from '../../../../components/MODFlag'
 import { NewBadge } from '../../../../components/NewBadge'

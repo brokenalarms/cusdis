@@ -16,14 +16,15 @@ type UpdateFunction = (cachedData: any, commentId: string, newData: any) => any
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
 // Simple WebSocket hook that just listens and updates specific queries
-export function useWebSocketForQuery(
+export function useQueryWithWebSocket(
   projectId: string | undefined,
   queryKey: unknown[],
-  updateFunction: UpdateFunction
+  updateFunction: UpdateFunction,
 ) {
   const queryClient = useQueryClient()
   const wsRef = useRef<WebSocket | null>(null)
-  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected')
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>('disconnected')
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const lastConnectAttemptRef = useRef<number>(0)
@@ -34,7 +35,11 @@ export function useWebSocketForQuery(
 
   // Create WebSocket connection with debouncing
   const connect = useCallback(async () => {
-    if (!projectId || connectionState === 'connecting' || connectionState === 'connected') {
+    if (
+      !projectId ||
+      connectionState === 'connecting' ||
+      connectionState === 'connected'
+    ) {
       return
     }
 
@@ -47,7 +52,7 @@ export function useWebSocketForQuery(
       if (connectDebounceRef.current) {
         clearTimeout(connectDebounceRef.current)
       }
-      
+
       connectDebounceRef.current = setTimeout(() => {
         connect()
       }, minInterval - timeSinceLastAttempt)
@@ -60,13 +65,13 @@ export function useWebSocketForQuery(
     try {
       // Initialize server first
       await fetch(`/api/ws?projectId=${projectId}`)
-      
+
       // Small delay to ensure server is ready
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const wsUrl = `${protocol}//${window.location.host}/api/ws?projectId=${projectId}`
-      
+
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
 
@@ -79,22 +84,27 @@ export function useWebSocketForQuery(
       ws.onmessage = (event) => {
         try {
           const wsEvent: WebSocketEvent = JSON.parse(event.data)
-          
+
           // Only handle new comments for this project
-          if (wsEvent.projectId !== projectId || wsEvent.action !== 'created') return
+          if (wsEvent.projectId !== projectId || wsEvent.action !== 'created')
+            return
 
           // Show notification
           notifications.show({
             title: 'New Comment',
             message: `Comment ${wsEvent.commentId.substring(0, 8)} added`,
             color: 'blue',
-            autoClose: 3000
+            autoClose: 3000,
           })
 
           // Update the specific query
           const cachedData = queryClient.getQueryData(queryKey)
           if (cachedData) {
-            const newCachedData = stableUpdateFunction(cachedData, wsEvent.commentId, wsEvent.newData)
+            const newCachedData = stableUpdateFunction(
+              cachedData,
+              wsEvent.commentId,
+              wsEvent.newData,
+            )
             if (newCachedData !== cachedData) {
               queryClient.setQueryData(queryKey, newCachedData)
             }
@@ -110,29 +120,45 @@ export function useWebSocketForQuery(
       }
 
       ws.onclose = (event) => {
-        console.log(`WebSocket disconnected for project ${projectId}`, event.code, event.reason)
+        console.log(
+          `WebSocket disconnected for project ${projectId}`,
+          event.code,
+          event.reason,
+        )
         setConnectionState('disconnected')
-        
+
         // Don't auto-reconnect in development when HMR is active
         const isDevelopment = process.env.NODE_ENV === 'development'
         const isAbnormalClosure = event.code === 1006
         const isHMRClosure = isDevelopment && isAbnormalClosure
-        
+
         // Auto-reconnect with exponential backoff (unless it was a clean close or HMR in dev)
-        if (event.code !== 1000 && !isHMRClosure && reconnectAttemptsRef.current < 5) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000)
-          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`)
-          
+        if (
+          event.code !== 1000 &&
+          !isHMRClosure &&
+          reconnectAttemptsRef.current < 5
+        ) {
+          const delay = Math.min(
+            1000 * Math.pow(2, reconnectAttemptsRef.current),
+            10000,
+          )
+          console.log(
+            `Reconnecting in ${delay}ms (attempt ${
+              reconnectAttemptsRef.current + 1
+            })`,
+          )
+
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current++
             setConnectionState('reconnecting')
             connect()
           }, delay)
         } else if (isHMRClosure) {
-          console.log('WebSocket closed due to HMR - will reconnect on next stable state')
+          console.log(
+            'WebSocket closed due to HMR - will reconnect on next stable state',
+          )
         }
       }
-
     } catch (error) {
       console.error('Failed to connect WebSocket:', error)
       setConnectionState('disconnected')
@@ -145,17 +171,17 @@ export function useWebSocketForQuery(
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
     }
-    
+
     if (connectDebounceRef.current) {
       clearTimeout(connectDebounceRef.current)
       connectDebounceRef.current = null
     }
-    
+
     if (wsRef.current) {
       wsRef.current.close(1000, 'Component unmount') // Clean close
       wsRef.current = null
     }
-    
+
     setConnectionState('disconnected')
     reconnectAttemptsRef.current = 0
   }, [])
@@ -189,7 +215,7 @@ export function useWebSocketForQuery(
       // In development, wait a bit longer for HMR to settle before reconnecting
       const isDevelopment = process.env.NODE_ENV === 'development'
       const delay = isDevelopment ? 3000 : 1000
-      
+
       const reconnectTimer = setTimeout(() => {
         if (connectionState === 'disconnected') {
           console.log('Attempting to reconnect after HMR settlement')

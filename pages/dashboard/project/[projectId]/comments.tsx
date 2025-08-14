@@ -9,7 +9,10 @@ import React from 'react'
 import { AiOutlineCheck, AiOutlineSmile } from 'react-icons/ai'
 import { useMutation, useQueryClient } from 'react-query'
 import { useQuery } from 'react-query'
-import { useWebSocketForQuery, updateCommentList } from '../../../../hooks/useQueryWithWebSocket'
+import {
+  useQueryWithWebSocket,
+  updateCommentList,
+} from '../../../../hooks/useQueryWithWebSocket'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { Comment } from '../../../../components/Comment'
 import { UserSession } from '../../../../service'
@@ -299,7 +302,11 @@ function ProjectPage(props: {
   const getCommentsQuery = useQuery(queryKey, getComments)
   
   // Add WebSocket listener for this specific query
-  useWebSocketForQuery(router.query.projectId as string, queryKey, updateCommentList)
+  useQueryWithWebSocket(
+    router.query.projectId as string,
+    queryKey,
+    updateCommentList,
+  )
 
 
   // Selection state for batch actions
