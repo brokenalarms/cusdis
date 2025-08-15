@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from 'react-query'
 import { MantineProvider } from '@mantine/core'
 import { Notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
+import { SocketProvider } from '../contexts/SocketContext'
 
 import '../style.css'
 
@@ -24,8 +25,10 @@ export default function App({ Component, pageProps }) {
           primaryColor: 'gray'
         }} withGlobalStyles withNormalizeCSS>
           <ModalsProvider>
-            <Notifications position='bottom-right' />
-            <Component {...pageProps} />
+            <SocketProvider>
+              <Notifications position='bottom-right' />
+              <Component {...pageProps} />
+            </SocketProvider>
           </ModalsProvider>
         </MantineProvider>
       </QueryClientProvider>

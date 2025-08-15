@@ -17,6 +17,9 @@ import { ProjectService } from '../../../../service/project.service'
 import { MainLayoutData, ViewDataService } from '../../../../service/viewData.service'
 import { apiClient } from '../../../../utils.client'
 import { getSession } from '../../../../utils.server'
+import { useOptimisticRemovalMutation, idExtractors } from '../../../../utils/optimistic-cache'
+import { usePagePrefetch } from '../../../../utils/use-page-prefetch'
+import { useSocketCommentHandler } from '../../../../contexts/SocketContext'
 
 const getComments = async ({ queryKey }) => {
   const [_key, { projectId, page }] = queryKey
@@ -167,29 +170,12 @@ function CommentToolbar(props: {
       props.refetch()
     }
   })
-  const deleteCommentMutation = useMutation((data: { commentId: string }) => deleteComments({ commentIds: [data.commentId] }), {
-    onSuccess: (result, { commentId }) => {
-      // Remove comment from UI only after API success
-      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.filter(comment => comment.id !== commentId),
-          commentCount: Math.max(0, old.commentCount - 1)
-        }
-      })
-    },
-    onError: (err, { commentId }, context) => {
-      // Refetch to ensure consistency after error
-      props.refetch()
-      notifications.show({
-        title: "Error",
-        message: 'Failed to delete comment',
-        color: 'red'
-      })
-    }
-  })
+  const deleteCommentMutation = useOptimisticRemovalMutation(
+    (data: { commentId: string }) => deleteComments({ commentIds: [data.commentId] }),
+    ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }],
+    ['getComments', { projectId: router.query.projectId as string }],
+    idExtractors.singleId
+  )
 
   return (
     <Stack>
@@ -297,6 +283,17 @@ function ProjectPage(props: {
   const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
   const getCommentsQuery = useQuery(queryKey, getComments)
 
+  // Proactive page prefetching for better cache redistribution
+  usePagePrefetch('getComments', getCommentsQuery.data, page, getComments)
+
+  // Register socket comment handler for real-time updates
+  const handleNewComment = React.useCallback(() => {
+    // Simply refetch to get updated data, reusing existing pattern
+    getCommentsQuery.refetch()
+  }, [getCommentsQuery])
+
+  useSocketCommentHandler(handleNewComment)
+
 
   // Selection state for batch actions
   const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([])
@@ -370,38 +367,37 @@ function ProjectPage(props: {
     }
   }
 
-  // Batch delete handler
-  const [isBatchDeleting, setIsBatchDeleting] = React.useState(false)
+  // Batch delete handler using optimistic mutation
+  const batchDeleteMutation = useOptimisticRemovalMutation(
+    (data: { commentIds: string[] }) => deleteComments(data),
+    ['getComments', { projectId: router.query.projectId as string, page }],
+    ['getComments', { projectId: router.query.projectId as string }],
+    idExtractors.multipleIds
+  )
+
   const handleBatchDelete = async () => {
     if (selectedCommentIds.length === 0) return
-    setIsBatchDeleting(true)
     
-    try {
-      const result = await deleteComments({ commentIds: selectedCommentIds })
-      
-      // Update UI only after successful API call
-      const queryKey = ['getComments', { projectId: router.query.projectId as string, page }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
-          commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+    batchDeleteMutation.mutate(
+      { commentIds: selectedCommentIds },
+      {
+        onSuccess: (result) => {
+          notifications.show({
+            title: 'Deleted',
+            message: `Deleted ${result.deleted} comment(s)`,
+            color: 'red'
+          })
+          setSelectedCommentIds([])
+        },
+        onError: () => {
+          notifications.show({ 
+            title: 'Error', 
+            message: 'Delete operation failed', 
+            color: 'red' 
+          })
         }
-      })
-      
-      notifications.show({
-        title: 'Deleted',
-        message: `Deleted ${result.deleted} comment(s)`,
-        color: 'red'
-      })
-      setSelectedCommentIds([])
-    } catch (e) {
-      await getCommentsQuery.refetch()
-      notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })
-    } finally {
-      setIsBatchDeleting(false)
-    }
+      }
+    )
   }
 
   const { commentCount = 0, pageCount = 0 } = getCommentsQuery.data || {}
@@ -419,7 +415,7 @@ function ProjectPage(props: {
       label: 'Delete Selected',
       color: 'red',
       variant: 'light',
-      loading: isBatchDeleting,
+      loading: batchDeleteMutation.isLoading,
       disabled: selectedCommentIds.length === 0,
       onClick: handleBatchDelete,
     },
@@ -467,7 +463,7 @@ function ProjectPage(props: {
               <CommentToolbar 
                 comment={comment} 
                 refetch={getCommentsQuery.refetch} 
-                currentPage={page} 
+                currentPage={page}
               />
             }
           />

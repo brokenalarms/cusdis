@@ -23,6 +23,7 @@ export type CommentWrapper = {
   pageSize: number
   pageCount: number
   data: CommentItem[]
+  currentPage?: number
 }
 
 export type CommentItem = Comment & {
@@ -159,7 +160,7 @@ export class CommentService extends RequestScopeService {
       where,
     }
 
-    const page = options?.page || 1
+    let page = options?.page || 1
 
     const [commentCount, comments] = await prisma.$transaction([
       prisma.comment.count({ where }),
@@ -172,6 +173,22 @@ export class CommentService extends RequestScopeService {
         },
       }),
     ])
+
+    const pageCount = Math.ceil(commentCount / pageSize) || 1
+
+    // If current page is empty but there are comments, redirect to last available page
+    if (comments.length === 0 && commentCount > 0 && page > pageCount) {
+      page = pageCount
+      const adjustedComments = await prisma.comment.findMany({
+        ...baseQuery,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+      comments.splice(0, 0, ...adjustedComments)
+    }
 
     // Fetch verification status for all unique emails in the comments
     const uniqueEmails = [...new Set(comments.flatMap(comment => 
@@ -187,8 +204,6 @@ export class CommentService extends RequestScopeService {
     const verificationMap = new Map(
       verifiedCommenters.map(c => [c.email, Boolean(c.verifiedAt)])
     )
-
-    const pageCount = Math.ceil(commentCount / pageSize) || 1
     
     // Apply post-processing filtering only when includeDeletedParents is enabled
     const filteredComments = options?.includeDeletedParents 
@@ -238,6 +253,7 @@ export class CommentService extends RequestScopeService {
       commentCount,
       pageSize,
       pageCount,
+      currentPage: page,
     }
   }
 
@@ -532,7 +548,8 @@ export class CommentService extends RequestScopeService {
     },
   ): Promise<CommentWrapper> {
     const pageSize = options?.pageSize || 10
-    const offset = ((options?.page || 1) - 1) * pageSize
+    let page = options?.page || 1
+    const offset = (page - 1) * pageSize
 
     const baseWhere = {
       page: {
@@ -575,9 +592,42 @@ export class CommentService extends RequestScopeService {
     ])
 
     const pageCount = Math.ceil(commentCount / pageSize) || 1
+
+    // If current page is empty but there are comments, redirect to last available page
+    let adjustedComments = comments
+    if (comments.length === 0 && commentCount > 0 && page > pageCount) {
+      page = pageCount
+      adjustedComments = await prisma.comment.findMany({
+        where: baseWhere,
+        select: options?.select || {
+          id: true,
+          content: true,
+          by_nickname: true,
+          by_email: true,
+          createdAt: true,
+          deletedAt: true,
+          approved: true,
+          moderatorId: true,
+          page: {
+            select: {
+              slug: true,
+              url: true,
+            },
+          },
+          _count: {
+            select: { replies: true }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      })
+    }
     
     // Fetch verification status for all unique emails in deleted comments (same as regular getComments)
-    const uniqueEmails = [...new Set(comments.map(comment => comment.by_email).filter(Boolean) as string[])]
+    const uniqueEmails = [...new Set(adjustedComments.map(comment => comment.by_email).filter(Boolean) as string[])]
     
     const verifiedCommenters = await prisma.commenter.findMany({
       where: { email: { in: uniqueEmails } },
@@ -589,7 +639,7 @@ export class CommentService extends RequestScopeService {
     )
 
     // Format deleted comments for admin panel using existing formatComment method
-    const formattedComments = comments.map(comment => {
+    const formattedComments = adjustedComments.map(comment => {
       return this.formatComment({
         ...comment,
         replies: []
@@ -601,6 +651,7 @@ export class CommentService extends RequestScopeService {
       commentCount,
       pageSize,
       pageCount,
+      currentPage: page,
     }
   }
 

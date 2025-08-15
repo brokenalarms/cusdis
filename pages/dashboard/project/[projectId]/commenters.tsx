@@ -18,6 +18,9 @@ import { MainLayoutData, ViewDataService } from '../../../../service/viewData.se
 import { apiClient } from '../../../../utils.client'
 import { getSession } from '../../../../utils.server'
 import { isAdmin } from '../../../../utils/adminHelpers'
+import { useOptimisticRemovalMutation, idExtractors } from '../../../../utils/optimistic-cache'
+import { usePagePrefetch } from '../../../../utils/use-page-prefetch'
+import { useSocketCommentHandler } from '../../../../contexts/SocketContext'
 
 type CommenterGroup = {
   email: string
@@ -61,36 +64,11 @@ function CommenterToolbar(props: {
   const queryClient = useQueryClient()
   const router = useRouter()
 
-  const deleteCommenterMutation = useMutation(
+  const deleteCommenterMutation = useOptimisticRemovalMutation(
     (data: { projectId: string, emails: string[] }) => batchDeleteCommentsByEmail(data),
-    {
-      onSuccess: (result, { emails }) => {
-        // Update UI only after API success
-        const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page: props.currentPage }]
-        queryClient.setQueryData<CommentersData>(queryKey, (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            data: old.data.filter(commenter => !emails.includes(commenter.email)),
-            total: Math.max(0, old.total - emails.length)
-          }
-        })
-        notifications.show({
-          title: 'Deleted',
-          message: `Deleted all comments from ${emails.length} commenter(s)`,
-          color: 'red'
-        })
-      },
-      onError: (err, { emails }, context) => {
-        // Refetch to ensure consistency after error
-        props.refetch()
-        notifications.show({ 
-          title: 'Error', 
-          message: 'Delete operation failed', 
-          color: 'red' 
-        })
-      }
-    }
+    ['getCommenters', { projectId: router.query.projectId as string, page: props.currentPage }],
+    ['getCommenters', { projectId: router.query.projectId as string }],
+    (variables) => variables.emails
   )
 
   return (
@@ -115,10 +93,28 @@ function CommenterToolbar(props: {
             ),
             labels: { confirm: 'Delete All Comments', cancel: 'Cancel' },
             confirmProps: { color: 'red' },
-            onConfirm: () => deleteCommenterMutation.mutate({ 
-              projectId: router.query.projectId as string, 
-              emails: [props.commenter.email] 
-            })
+            onConfirm: () => deleteCommenterMutation.mutate(
+              { 
+                projectId: router.query.projectId as string, 
+                emails: [props.commenter.email] 
+              },
+              {
+                onSuccess: () => {
+                  notifications.show({
+                    title: 'Deleted',
+                    message: `Deleted all comments from commenter`,
+                    color: 'red'
+                  })
+                },
+                onError: () => {
+                  notifications.show({ 
+                    title: 'Error', 
+                    message: 'Delete operation failed', 
+                    color: 'red' 
+                  })
+                }
+              }
+            )
           })
         }} 
         color="red" 
@@ -153,6 +149,17 @@ function CommentersPage(props: {
   const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page }]
   const getCommentersQuery = useQuery(queryKey, getCommenters)
 
+  // Proactive page prefetching for better cache redistribution
+  usePagePrefetch('getCommenters', getCommentersQuery.data, page, getCommenters)
+
+  // Register socket comment handler for real-time updates
+  const handleNewComment = React.useCallback(() => {
+    // Simply refetch to get updated data, reusing existing pattern
+    getCommentersQuery.refetch()
+  }, [getCommentersQuery])
+
+  useSocketCommentHandler(handleNewComment)
+
   // Selection state for batch actions
   const [selectedEmails, setSelectedEmails] = React.useState<string[]>([])
   const isSelected = React.useCallback((email: string) => selectedEmails.includes(email), [selectedEmails])
@@ -165,36 +172,12 @@ function CommentersPage(props: {
   const { hideAdminPosts, setHideAdminPosts, filteredItems: filteredCommenters } = useAdminFilter(allCommenters)
   const clearSelection = () => setSelectedEmails([])
 
-  // Batch delete by email handler
-  const queryClient = useQueryClient()
-  const batchDeleteMutation = useMutation(
+  // Batch delete by email handler using optimistic mutation
+  const batchDeleteMutation = useOptimisticRemovalMutation(
     (data: { projectId: string, emails: string[] }) => batchDeleteCommentsByEmail(data),
-    {
-      onSuccess: (result, { emails }) => {
-        // Update UI only after successful API call
-        const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page }]
-        queryClient.setQueryData<CommentersData>(queryKey, (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            data: old.data.filter(commenter => !emails.includes(commenter.email)),
-            total: Math.max(0, old.total - emails.length)
-          }
-        })
-        
-        notifications.show({
-          title: 'Deleted',
-          message: `Deleted all comments from ${emails.length} commenter(s)`,
-          color: 'red'
-        })
-        setSelectedEmails([])
-      },
-      onError: (err, { emails }, context) => {
-        // Refetch to ensure consistency after error
-        getCommentersQuery.refetch()
-        notifications.show({ title: 'Error', message: 'Delete operation failed', color: 'red' })
-      }
-    }
+    ['getCommenters', { projectId: router.query.projectId as string, page }],
+    ['getCommenters', { projectId: router.query.projectId as string }],
+    (variables) => variables.emails
   )
 
   const handleBatchDeleteByEmail = () => {
@@ -217,10 +200,29 @@ function CommentersPage(props: {
       ),
       labels: { confirm: 'Delete All Comments', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => batchDeleteMutation.mutate({ 
-        projectId: router.query.projectId as string, 
-        emails: selectedEmails 
-      })
+      onConfirm: () => batchDeleteMutation.mutate(
+        { 
+          projectId: router.query.projectId as string, 
+          emails: selectedEmails 
+        },
+        {
+          onSuccess: (result) => {
+            notifications.show({
+              title: 'Deleted',
+              message: `Deleted all comments from ${selectedEmails.length} commenter(s)`,
+              color: 'red'
+            })
+            setSelectedEmails([])
+          },
+          onError: () => {
+            notifications.show({ 
+              title: 'Error', 
+              message: 'Delete operation failed', 
+              color: 'red' 
+            })
+          }
+        }
+      )
     })
   }
 

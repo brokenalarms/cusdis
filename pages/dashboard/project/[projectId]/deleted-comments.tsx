@@ -7,7 +7,6 @@ import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { AiOutlineReload, AiOutlineDelete } from 'react-icons/ai'
-import { useMutation, useQueryClient } from 'react-query'
 import { useQuery } from 'react-query'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
 import { Comment } from '../../../../components/Comment'
@@ -17,6 +16,8 @@ import { ProjectService } from '../../../../service/project.service'
 import { MainLayoutData, ViewDataService } from '../../../../service/viewData.service'
 import { apiClient } from '../../../../utils.client'
 import { getSession } from '../../../../utils.server'
+import { useOptimisticRemovalMutation, idExtractors } from '../../../../utils/optimistic-cache'
+import { usePagePrefetch } from '../../../../utils/use-page-prefetch'
 
 const getDeletedComments = async ({ queryKey }) => {
   const [_key, { projectId, page }] = queryKey
@@ -67,6 +68,9 @@ function DeletedCommentsPage(props: {
   const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
   const getDeletedCommentsQuery = useQuery(queryKey, getDeletedComments)
 
+  // Proactive page prefetching for better cache redistribution
+  usePagePrefetch('getDeletedComments', getDeletedCommentsQuery.data, page, getDeletedComments)
+
   // Selection state for batch actions
   const [selectedCommentIds, setSelectedCommentIds] = React.useState<string[]>([])
   
@@ -74,60 +78,20 @@ function DeletedCommentsPage(props: {
   const allComments = getDeletedCommentsQuery.data?.data || []
   const { hideAdminPosts, setHideAdminPosts, filteredItems: filteredComments } = useAdminFilter(allComments)
   
-  // Individual action mutations
-  const restoreCommentMutation = useMutation((data: { commentId: string }) => restoreComments({ commentIds: [data.commentId] }), {
-    onSuccess: (result, { commentId }) => {
-      const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.filter(comment => comment.id !== commentId),
-          commentCount: Math.max(0, old.commentCount - 1)
-        }
-      })
-      notifications.show({
-        title: 'Restored',
-        message: 'Comment restored successfully',
-        color: 'green'
-      })
-    },
-    onError: () => {
-      getDeletedCommentsQuery.refetch()
-      notifications.show({
-        title: "Error",
-        message: 'Failed to restore comment',
-        color: 'red'
-      })
-    }
-  })
+  // Individual action mutations using optimistic updates
+  const restoreCommentMutation = useOptimisticRemovalMutation(
+    (data: { commentId: string }) => restoreComments({ commentIds: [data.commentId] }),
+    ['getDeletedComments', { projectId: router.query.projectId as string, page }],
+    ['getDeletedComments', { projectId: router.query.projectId as string }],
+    idExtractors.singleId
+  )
 
-  const hardDeleteCommentMutation = useMutation((data: { commentId: string }) => hardDeleteComments({ commentIds: [data.commentId] }), {
-    onSuccess: (result, { commentId }) => {
-      const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.filter(comment => comment.id !== commentId),
-          commentCount: Math.max(0, old.commentCount - 1)
-        }
-      })
-      notifications.show({
-        title: 'Permanently Deleted',
-        message: `Permanently deleted comment and ${result.deletedCount - 1} replies`,
-        color: 'red'
-      })
-    },
-    onError: () => {
-      getDeletedCommentsQuery.refetch()
-      notifications.show({
-        title: "Error",
-        message: 'Failed to permanently delete comment',
-        color: 'red'
-      })
-    }
-  })
+  const hardDeleteCommentMutation = useOptimisticRemovalMutation(
+    (data: { commentId: string }) => hardDeleteComments({ commentIds: [data.commentId] }),
+    ['getDeletedComments', { projectId: router.query.projectId as string, page }],
+    ['getDeletedComments', { projectId: router.query.projectId as string }],
+    idExtractors.singleId
+  )
   const isSelected = React.useCallback((id: string) => selectedCommentIds.includes(id), [selectedCommentIds])
   const toggleSelected = (id: string) => {
     setSelectedCommentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -139,8 +103,6 @@ function DeletedCommentsPage(props: {
   const clearSelection = () => setSelectedCommentIds([])
 
   // Batch hard delete handler
-  const queryClient = useQueryClient()
-  const [isBatchHardDeleting, setIsBatchHardDeleting] = React.useState(false)
   const handleBatchHardDelete = async () => {
     if (selectedCommentIds.length === 0) return
     
@@ -158,78 +120,75 @@ function DeletedCommentsPage(props: {
     })
   }
 
+  // Batch hard delete using optimistic mutation
+  const batchHardDeleteMutation = useOptimisticRemovalMutation(
+    (data: { commentIds: string[] }) => hardDeleteComments(data),
+    ['getDeletedComments', { projectId: router.query.projectId as string, page }],
+    ['getDeletedComments', { projectId: router.query.projectId as string }],
+    idExtractors.multipleIds
+  )
+
   const performBatchHardDelete = async () => {
-    setIsBatchHardDeleting(true)
-    
-    try {
-      const result = await hardDeleteComments({ commentIds: selectedCommentIds })
-      
-      // Update UI only after successful API call
-      const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
-          commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+    batchHardDeleteMutation.mutate(
+      { commentIds: selectedCommentIds },
+      {
+        onSuccess: (result) => {
+          notifications.show({
+            title: 'Permanently Deleted',
+            message: `Permanently deleted ${result.deletedCount} comment(s) and replies`,
+            color: 'red'
+          })
+          setSelectedCommentIds([])
+        },
+        onError: () => {
+          notifications.show({ 
+            title: 'Error', 
+            message: 'Hard delete operation failed', 
+            color: 'red' 
+          })
         }
-      })
-      
-      notifications.show({
-        title: 'Permanently Deleted',
-        message: `Permanently deleted ${result.deletedCount} comment(s) and replies`,
-        color: 'red'
-      })
-      setSelectedCommentIds([])
-    } catch (e) {
-      await getDeletedCommentsQuery.refetch()
-      notifications.show({ title: 'Error', message: 'Hard delete operation failed', color: 'red' })
-    } finally {
-      setIsBatchHardDeleting(false)
-    }
+      }
+    )
   }
 
-  // Batch restore handler
-  const [isBatchRestoring, setIsBatchRestoring] = React.useState(false)
+  // Batch restore using optimistic mutation
+  const batchRestoreMutation = useOptimisticRemovalMutation(
+    (data: { commentIds: string[] }) => restoreComments(data),
+    ['getDeletedComments', { projectId: router.query.projectId as string, page }],
+    ['getDeletedComments', { projectId: router.query.projectId as string }],
+    idExtractors.multipleIds
+  )
+
   const handleBatchRestore = async () => {
     if (selectedCommentIds.length === 0) return
-    setIsBatchRestoring(true)
     
-    const queryKey = ['getDeletedComments', { projectId: router.query.projectId as string, page }]
-    const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-
-    try {
-      const result = await restoreComments({ commentIds: selectedCommentIds })
-      
-      // Update UI only after successful API call
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.filter(comment => !selectedCommentIds.includes(comment.id)),
-          commentCount: Math.max(0, old.commentCount - selectedCommentIds.length)
+    batchRestoreMutation.mutate(
+      { commentIds: selectedCommentIds },
+      {
+        onSuccess: (result) => {
+          notifications.show({
+            title: 'Restored',
+            message: `Restored ${result.restored} comment(s)`,
+            color: 'green'
+          })
+          setSelectedCommentIds([])
+        },
+        onError: () => {
+          notifications.show({ 
+            title: 'Error', 
+            message: 'Restore operation failed', 
+            color: 'red' 
+          })
         }
-      })
-      
-      notifications.show({
-        title: 'Restored',
-        message: `Restored ${result.restored} comment(s)`,
-        color: 'green'
-      })
-      setSelectedCommentIds([])
-    } catch (e) {
-      await getDeletedCommentsQuery.refetch()
-      notifications.show({ title: 'Error', message: 'Restore operation failed', color: 'red' })
-    } finally {
-      setIsBatchRestoring(false)
-    }
+      }
+    )
   }
 
   const controlBarButtons = [
     {
       label: `Restore Selected (${selectedCommentIds.length})`,
       color: 'green',
-      loading: isBatchRestoring,
+      loading: batchRestoreMutation.isLoading,
       disabled: selectedCommentIds.length === 0,
       onClick: handleBatchRestore,
     },
@@ -237,7 +196,7 @@ function DeletedCommentsPage(props: {
       label: `Hard Delete Selected (${selectedCommentIds.length})`,
       color: 'red',
       variant: 'light',
-      loading: isBatchHardDeleting,
+      loading: batchHardDeleteMutation.isLoading,
       disabled: selectedCommentIds.length === 0,
       onClick: handleBatchHardDelete,
     },
@@ -284,7 +243,25 @@ function DeletedCommentsPage(props: {
                     restoreCommentMutation.variables?.commentId === comment.id
                   }
                   onClick={() =>
-                    restoreCommentMutation.mutate({ commentId: comment.id })
+                    restoreCommentMutation.mutate(
+                      { commentId: comment.id },
+                      {
+                        onSuccess: () => {
+                          notifications.show({
+                            title: 'Restored',
+                            message: 'Comment restored successfully',
+                            color: 'green'
+                          })
+                        },
+                        onError: () => {
+                          notifications.show({
+                            title: "Error",
+                            message: 'Failed to restore comment',
+                            color: 'red'
+                          })
+                        }
+                      }
+                    )
                   }
                   leftIcon={<AiOutlineReload />}
                   color="green"
@@ -323,9 +300,25 @@ function DeletedCommentsPage(props: {
                       },
                       confirmProps: { color: 'red' },
                       onConfirm: () =>
-                        hardDeleteCommentMutation.mutate({
-                          commentId: comment.id,
-                        }),
+                        hardDeleteCommentMutation.mutate(
+                          { commentId: comment.id },
+                          {
+                            onSuccess: (result) => {
+                              notifications.show({
+                                title: 'Permanently Deleted',
+                                message: `Permanently deleted comment and ${result.deletedCount - 1} replies`,
+                                color: 'red'
+                              })
+                            },
+                            onError: () => {
+                              notifications.show({
+                                title: "Error",
+                                message: 'Failed to permanently delete comment',
+                                color: 'red'
+                              })
+                            }
+                          }
+                        ),
                     })
                   }}
                   leftIcon={<AiOutlineDelete />}
