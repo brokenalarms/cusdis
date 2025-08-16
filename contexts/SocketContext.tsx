@@ -54,13 +54,14 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   }, [])
 
   useEffect(() => {
-    // Only connect if we're in the dashboard area
+    // Only connect if we're in the dashboard area and WebSockets are enabled
     if (!router.pathname.startsWith('/dashboard')) {
       return
     }
 
     const socketInstance = io({
       path: '/socket.io/',
+      timeout: 5000, // Quick timeout to fail fast if WebSockets not supported
     })
 
     socketInstance.on('connect', () => {
@@ -68,6 +69,11 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     })
 
     socketInstance.on('disconnect', () => {
+      setIsConnected(false)
+    })
+
+    socketInstance.on('connect_error', (error) => {
+      console.log('WebSocket connection failed - server may not support WebSockets:', error.message)
       setIsConnected(false)
     })
 

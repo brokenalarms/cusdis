@@ -13,31 +13,37 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl)
   })
 
-  const io = new Server(server, {
-    cors: {
-      origin: dev ? "http://localhost:3000" : false,
-      methods: ["GET", "POST"]
-    }
-  })
-
-  io.on('connection', (socket) => {
-    
-    // Join project-specific rooms for notifications
-    socket.on('join-project', (projectId) => {
-      socket.join(`project-${projectId}`)
+  // Only initialize WebSockets if platform supports them
+  if (process.env.PLATFORM_SUPPORTS_WEBSOCKETS === 'true') {
+    const io = new Server(server, {
+      cors: {
+        origin: dev ? "http://localhost:3000" : false,
+        methods: ["GET", "POST"]
+      }
     })
 
-    socket.on('leave-project', (projectId) => {
-      socket.leave(`project-${projectId}`)
+    io.on('connection', (socket) => {
+      
+      // Join project-specific rooms for notifications
+      socket.on('join-project', (projectId) => {
+        socket.join(`project-${projectId}`)
+      })
+
+      socket.on('leave-project', (projectId) => {
+        socket.leave(`project-${projectId}`)
+      })
+
+      socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id)
+      })
     })
 
-    socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id)
-    })
-  })
-
-  // Make io instance available globally for use in API routes
-  global.io = io
+    // Make io instance available globally for use in API routes
+    global.io = io
+    console.log('> WebSockets enabled')
+  } else {
+    console.log('> WebSockets disabled (PLATFORM_SUPPORTS_WEBSOCKETS not set to true)')
+  }
 
   const port = process.env.PORT || 3000
   server.listen(port, (err) => {

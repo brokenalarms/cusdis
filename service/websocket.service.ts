@@ -6,7 +6,8 @@ export class WebSocketService extends RequestScopeService {
   
   async addComment(comment: Comment, projectId: string) {
     // Only broadcast non-moderator comments to prevent infinite loops
-    if (comment.moderatorId) {
+    // and only if WebSockets are enabled
+    if (comment.moderatorId || process.env.PLATFORM_SUPPORTS_WEBSOCKETS !== 'true') {
       return;
     }
 
