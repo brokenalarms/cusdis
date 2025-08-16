@@ -9,7 +9,7 @@ import { useRouter } from "next/router"
 import React from "react"
 import { useForm } from "react-hook-form"
 import { AiOutlineCode, AiOutlineComment, AiOutlineDelete, AiOutlineDown, AiOutlineFileText, AiOutlinePlus, AiOutlineQuestionCircle, AiOutlineRight, AiOutlineSetting, AiOutlineUser } from 'react-icons/ai'
-import { useMutation } from "react-query"
+import { useMutation, useQueryClient } from "react-query"
 import { usageLimitation } from "../config.common"
 import type { ProjectServerSideProps } from "../pages/dashboard/project/[projectId]/settings"
 import { MainLayoutData } from "../service/viewData.service"
@@ -47,16 +47,21 @@ export function MainLayout(props: {
 
   const router = useRouter()
   const clipboard = useClipboard()
+  const queryClient = useQueryClient()
   const [isUserPannelOpen, { open: openUserModal, close: closeUserModal }] = useDisclosure(false);
   const [isNavigating, setIsNavigating] = React.useState(false)
   const [pendingRoute, setPendingRoute] = React.useState<string | null>(null)
 
-  // Track navigation state
+  // Track navigation state and invalidate caches on route changes
   React.useEffect(() => {
     const handleStart = (url: string) => {
       setIsNavigating(true)
       setPendingRoute(url)
+      
+      // Invalidate all queries on any navigation to ensure fresh data
+      queryClient.invalidateQueries()
     }
+    
     const handleComplete = () => {
       setIsNavigating(false)
       setPendingRoute(null)
@@ -71,7 +76,7 @@ export function MainLayout(props: {
       router.events.off('routeChangeComplete', handleComplete)
       router.events.off('routeChangeError', handleComplete)
     }
-  }, [router])
+  }, [router, queryClient])
 
   const userSettingsForm = useForm({
     defaultValues: {
