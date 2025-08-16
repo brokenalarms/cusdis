@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
-import { io, Socket } from 'socket.io-client'
-import { useRouter } from 'next/router'
 import { notifications } from '@mantine/notifications'
+import { useRouter } from 'next/router'
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react'
+import { io, Socket } from 'socket.io-client'
 
 type CommentMergeHandler = (comment?: any) => void
 
@@ -41,6 +41,9 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   const [commentHandlers, setCommentHandlers] = useState<Set<CommentMergeHandler>>(new Set())
   const router = useRouter()
 
+  // Check WebSocket support once on component initialization
+  const isWebSocketEnabled = process.env.PLATFORM_SUPPORTS_WEBSOCKETS === 'true'
+
   const registerCommentHandler = useCallback((handler: CommentMergeHandler) => {
     setCommentHandlers(prev => new Set(prev).add(handler))
   }, [])
@@ -53,9 +56,16 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     })
   }, [])
 
+  // Log WebSocket status once on mount
+  useEffect(() => {
+    if (!isWebSocketEnabled) {
+      console.log('WebSocket connections disabled - platform does not support WebSockets')
+    }
+  }, []) // Empty dependency array ensures this only runs once
+
   useEffect(() => {
     // Only connect if we're in the dashboard area and WebSockets are enabled
-    if (!router.pathname.startsWith('/dashboard')) {
+    if (!router.pathname.startsWith('/dashboard') || !isWebSocketEnabled) {
       return
     }
 
