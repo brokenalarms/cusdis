@@ -1,16 +1,36 @@
 window.CUSDIS = window.CUSDIS || {}
+// Define Cusdis custom element
+class CusdisWidget extends HTMLElement {
+  iframe;
+  darkModeQuery;
+  classObserver;
+  onMessage;
+  onChangeColorScheme;
 
-const makeIframeContent = (target) => {
-  const host = target.dataset.host || 'https://cusdis.com'
-  const iframeJsPath = target.dataset.iframe || `${host}/js/iframe.umd.js`
-  const cssPath = target.dataset.css || `${host}/js/style.css`
+  connectedCallback() {
+    this.createIframe();
+    this.setupEventListeners();
+  }
 
-  // Decide initial theme for the iframe based on dataset, parent html .dark, or prefers-color-scheme
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const htmlIsDark = document.documentElement.classList.contains('dark')
-  const ds = (target.dataset.theme || '').toLowerCase()
+  disconnectedCallback() {
+    if (this.onMessage) {
+      window.removeEventListener('message', this.onMessage);
+    }
+    
+    if (this.darkModeQuery && this.onChangeColorScheme) {
+      this.darkModeQuery.removeEventListener('change', this.onChangeColorScheme);
+    }
+    
+    this.classObserver?.disconnect();
+    this.iframe?.remove();
+  }
 
-  return `<!DOCTYPE html>
+  makeIframeContent() {
+    const host = this.dataset.host || 'https://cusdis.com'
+    const iframeJsPath = this.dataset.iframe || `${host}/js/iframe.umd.js`
+    const cssPath = this.dataset.css || `${host}/js/style.css`
+
+    return `<!DOCTYPE html>
 <html>
   <head>
     <link rel="stylesheet" href="${cssPath}">
@@ -18,7 +38,7 @@ const makeIframeContent = (target) => {
     <link>
     <script>
       window.CUSDIS_LOCALE = ${JSON.stringify(window.CUSDIS_LOCALE)}
-      window.__DATA__ = ${JSON.stringify(target.dataset)}
+      window.__DATA__ = ${JSON.stringify(this.dataset)}
     </script>
     <style>
       html, body { margin: 0; overflow-y: hidden; }
@@ -32,128 +52,81 @@ const makeIframeContent = (target) => {
     <script src="${iframeJsPath}" type="module"></script>
   </body>
 </html>`
-}
-
-let singleTonIframe
-function createIframe(target) {
-  if (!singleTonIframe) {
-    singleTonIframe = document.createElement('iframe')
-    listenEvent(singleTonIframe, target)
   }
-  // srcdoc dosen't work on IE11
-  singleTonIframe.srcdoc = makeIframeContent(target)
-  singleTonIframe.style.width = '100%'
-  singleTonIframe.style.border = '0'
 
-  return singleTonIframe
-}
-
-function postMessageToChild(event, data) {
-  if (singleTonIframe) {
-    singleTonIframe.contentWindow.postMessage(
-      JSON.stringify({
-        from: 'cusdis',
-        event,
-        data,
-      }),
-    )
+  createIframe() {
+    // Create iframe
+    this.iframe = document.createElement('iframe');
+    this.iframe.srcdoc = this.makeIframeContent();
+    this.iframe.style.width = '100%';
+    this.iframe.style.border = '0';
+    
+    // Clear content and append iframe
+    this.innerHTML = '';
+    this.appendChild(this.iframe);
   }
-}
 
-function listenEvent(iframe, target) {
-  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  postMessageToChild(event, data) {
+    if (this.iframe?.contentWindow) {
+      this.iframe.contentWindow.postMessage(
+        JSON.stringify({
+          from: 'cusdis',
+          event,
+          data,
+        }),
+        '*'
+      );
+    }
+  }
 
-  const onMessage = (e) => {
+  onMessage = (e) => {
     try {
-      const msg = JSON.parse(e.data)
+      const msg = JSON.parse(e.data);
       if (msg.from === 'cusdis') {
         switch (msg.event) {
           case 'onload': {
-            const ds = (target.dataset.theme || '').toLowerCase()
-            const htmlIsDark = document.documentElement.classList.contains('dark')
-            const prefersDark = darkModeQuery.matches
+            const ds = (this.dataset.theme || '').toLowerCase();
+            const htmlIsDark = document.documentElement.classList.contains('dark');
+            const prefersDark = this.darkModeQuery.matches;
             const themeToSend = ds === 'dark' ? 'dark'
               : ds === 'light' ? 'light'
               : ds === 'auto' ? (prefersDark ? 'dark' : 'light')
-              : (htmlIsDark ? 'dark' : 'light')
-            postMessageToChild('setTheme', themeToSend)
+              : (htmlIsDark ? 'dark' : 'light');
+            this.postMessageToChild('setTheme', themeToSend);
           }
-          break
+          break;
           case 'resize':
-            {
-              iframe.style.height = msg.data + 'px'
+            if (this.iframe) {
+              this.iframe.style.height = msg.data + 'px';
             }
-            break
+            break;
         }
       }
     } catch (e) {}
   }
 
-  window.addEventListener('message', onMessage)
-
-  function onChangeColorScheme(e) {
-    const isDarkMode = e.matches
-    if (target.dataset.theme === 'auto') {
-      postMessageToChild('setTheme', isDarkMode ? 'dark' : 'light')
+  onChangeColorScheme = (e) => {
+    const isDarkMode = e.matches;
+    if (this.dataset.theme === 'auto') {
+      this.postMessageToChild('setTheme', isDarkMode ? 'dark' : 'light');
     }
   }
 
-  darkModeQuery.addEventListener('change', onChangeColorScheme)
+  onClassChange = () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    this.postMessageToChild('setTheme', isDark ? 'dark' : 'light');
+  }
 
-  // Sync when parent toggles Tailwind `.dark` class
-  const classObserver = new MutationObserver(() => {
-    const isDark = document.documentElement.classList.contains('dark')
-    postMessageToChild('setTheme', isDark ? 'dark' : 'light')
-  })
-  classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  setupEventListeners() {
+    this.darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    this.classObserver = new MutationObserver(this.onClassChange);
 
-  return () => {
-    darkModeQuery.removeEventListener('change', onChangeColorScheme)
-    window.removeEventListener('message', onMessage)
-    classObserver.disconnect()
+    // Set up listeners
+    window.addEventListener('message', this.onMessage);
+    this.darkModeQuery.addEventListener('change', this.onChangeColorScheme);
+    this.classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   }
 }
 
-function render(target) {
-  if (target) {
-    target.innerHTML = ''
-    const iframe = createIframe(target)
-    target.appendChild(iframe)
-  }
-}
-
-// deprecated
-window.renderCusdis = render
-
-window.CUSDIS.renderTo = render
-
-window.CUSDIS.setTheme = function (theme) {
-  postMessageToChild('setTheme', theme)
-}
-
-function initial() {
-  let target
-
-  if (window.cusdisElementId) {
-    target = document.querySelector(`#${window.cusdisElementId}`)
-  } else if (document.querySelector('#cusdis_thread')) {
-    target = document.querySelector('#cusdis_thread')
-  } else if (document.querySelector('#cusdis')) {
-    console.warn(
-      'id `cusdis` is deprecated. Please use `cusdis_thread` instead',
-    )
-    target = document.querySelector('#cusdis')
-  }
-
-  if (window.CUSDIS_PREVENT_INITIAL_RENDER === true) {
-  } else {
-    if (target) {
-      render(target)
-    }
-  }
-}
-
-// initialize
-window.CUSDIS.initial = initial
-
-initial()
+// Register the custom element
+customElements.define('cusdis-widget', CusdisWidget);
