@@ -26,7 +26,7 @@
     </div>
   </footer>
 
-  <p class="text-gray-500 dark:text-gray-400">{@html comment.parsedContent}</p>
+  <div class="markdown-body text-gray-500 dark:text-gray-400">{@html comment.parsedContent}</div>
 
   <div class="flex items-center mt-4 space-x-4">
     <button type="button" class="flex items-center text-sm text-gray-500 hover:underline dark:text-gray-400 font-medium"
