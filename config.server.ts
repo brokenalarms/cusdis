@@ -16,12 +16,12 @@ if (resolvedConfig.useLocalAuth) {
         username: {
           label: 'Username',
           type: 'text',
-          placeholder: 'env: USERNAME',
+          placeholder: 'Boaty McBoatface',
         },
         password: {
           label: 'Password',
           type: 'password',
-          placeholder: 'env: PASSWORD',
+          placeholder: 'super serial',
         },
       },
       async authorize(credentials: { username: string; password: string }) {
