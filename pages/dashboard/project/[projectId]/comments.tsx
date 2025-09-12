@@ -20,6 +20,12 @@ import { getSession } from '../../../../utils.server'
 import { useOptimisticRemovalMutation, idExtractors } from '../../../../utils/optimistic-cache'
 import { usePagePrefetch } from '../../../../utils/use-page-prefetch'
 import { useSocketCommentHandler } from '../../../../contexts/SocketContext'
+import { 
+  useApproveComment,
+  useUnapproveComment, 
+  useReplyToComment,
+  handleApproveWithVerificationCheck
+} from '../../../../utils/comment-actions'
 
 const getComments = async ({ queryKey }) => {
   const [_key, { projectId, page }] = queryKey
@@ -34,145 +40,33 @@ const getComments = async ({ queryKey }) => {
 }
 
 const approveComments = async ({ commentIds }) => {
-  const res = await apiClient.post('/comment/approve', {
-    commentIds
-  })
-  return res.data
-}
-
-const unapproveComments = async ({ commentIds }) => {
-  const res = await apiClient.post('/comment/unapprove', {
-    commentIds
-  })
+  const res = await apiClient.post('/comment/approve', { commentIds })
   return res.data
 }
 
 const deleteComments = async ({ commentIds }) => {
-  const res = await apiClient.delete('/comment/delete', {
-    data: { commentIds }
-  })
+  const res = await apiClient.delete('/comment/delete', { data: { commentIds } })
   return res.data
 }
 
-
-const replyAsModerator = async ({ parentId, content }) => {
-  const res = await apiClient.post(`/comment/${parentId}/replyAsModerator`, {
-    content
-  })
-  return res.data.data
-}
-
-const deleteProject = async ({ projectId }) => {
-  const res = await apiClient.delete<{
-    data: string
-  }>(`/project/${projectId}`)
-  return res.data.data
-}
-
-const updateProjectSettings = async ({ projectId, body }) => {
-  const res = await apiClient.put(`/project/${projectId}`, body)
-  return res.data
-}
 
 function CommentToolbar(props: {
   comment: CommentItem,
   refetch: any,
   currentPage: number,
 }) {
-  const queryClient = useQueryClient()
   const router = useRouter()
   const [replyContent, setReplyContent] = React.useState("")
   const [isOpenReplyForm, setIsOpenReplyForm] = React.useState(false)
 
-
-  const approveCommentMutation = useMutation((data: { commentId: string }) => approveComments({ commentIds: [data.commentId] }), {
-    onSuccess: (result, { commentId }) => {
-      // Update UI only after API success
-      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.map(comment =>
-            comment.id === commentId ? { ...comment, approved: true, isEmailVerified: true } : comment
-          )
-        }
-      })
-    },
-    onError: (err, { commentId }, context) => {
-      // Refetch to ensure consistency after error
-      props.refetch()
-      notifications.show({
-        title: "Error",
-        message: 'Failed to approve comment',
-        color: 'yellow'
-      })
-    }
-  })
-
-  const unapproveCommentMutation = useMutation((data: { commentId: string }) => unapproveComments({ commentIds: [data.commentId] }), {
-    onSuccess: (result, { commentId }) => {
-      // Update UI only after API success
-      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.map(comment =>
-            comment.id === commentId ? { ...comment, approved: false } : comment
-          )
-        }
-      })
-    },
-    onError: (err, { commentId }, context) => {
-      // Refetch to ensure consistency after error
-      props.refetch()
-      notifications.show({
-        title: "Error",
-        message: 'Failed to unapprove comment',
-        color: 'yellow'
-      })
-    }
-  })
-  const replyCommentMutation = useMutation(replyAsModerator, {
-    onMutate: async ({ parentId }) => {
-      // Cancel any outgoing refetches
-      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      await queryClient.cancelQueries(queryKey)
-
-      // Snapshot the previous value  
-      const previousComments = queryClient.getQueryData<CommentWrapper>(queryKey)
-
-      return { previousComments, queryKey, parentId }
-    },
-    onSuccess: (result, { parentId }, context) => {
-      // Update parent comment to approved and verified after API success
-      const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
-      queryClient.setQueryData<CommentWrapper>(queryKey, (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          data: old.data.map(comment =>
-            comment.id === parentId ? { ...comment, approved: true, isEmailVerified: true } : comment
-          )
-        }
-      })
-
-      setIsOpenReplyForm(false)
-      // Refetch to get the new reply that was added
-      props.refetch()
-    },
-    onError: (err, { parentId }, context) => {
-      // Revert the optimistic update on error (if any was made)
-      if (context?.previousComments) {
-        queryClient.setQueryData(context.queryKey, context.previousComments)
-      }
-      props.refetch()
-    }
-  })
+  const queryKey = ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }]
+  
+  const approveCommentMutation = useApproveComment(queryKey, props.refetch)
+  const unapproveCommentMutation = useUnapproveComment(queryKey, props.refetch)
+  const replyCommentMutation = useReplyToComment(queryKey, props.refetch)
   const deleteCommentMutation = useOptimisticRemovalMutation(
     (data: { commentId: string }) => deleteComments({ commentIds: [data.commentId] }),
-    ['getComments', { projectId: router.query.projectId as string, page: props.currentPage }],
+    queryKey,
     ['getComments', { projectId: router.query.projectId as string }],
     idExtractors.singleId
   )
@@ -196,26 +90,13 @@ function CommentToolbar(props: {
             Approved
           </Button>
         ) : (
-          <Button loading={approveCommentMutation.isLoading} onClick={_ => {
-            if (props.comment.by_email && !props.comment.isEmailVerified) {
-              modals.openConfirmModal({
-                title: 'Approve unverified comment',
-                children: (
-                  <Text size="sm">
-                    This commenter hasn't verified their email address yet. Approving this comment will also verify their email address ({props.comment.by_email}) for future comments.
-                  </Text>
-                ),
-                labels: { confirm: 'Approve & Verify', cancel: 'Cancel' },
-                onConfirm: () => approveCommentMutation.mutate({
-                  commentId: props.comment.id
-                })
-              })
-            } else {
-              approveCommentMutation.mutate({
-                commentId: props.comment.id
-              })
-            }
-          }} leftIcon={<AiOutlineSmile />} size="xs" variant={'subtle'}>
+          <Button 
+            loading={approveCommentMutation.isLoading} 
+            onClick={_ => handleApproveWithVerificationCheck(props.comment, approveCommentMutation)}
+            leftIcon={<AiOutlineSmile />} 
+            size="xs" 
+            variant={'subtle'}
+          >
             Approve
           </Button>
         )}
@@ -251,6 +132,8 @@ function CommentToolbar(props: {
               parentId: props.comment.id,
               content: replyContent
             })
+            setReplyContent('')
+            setIsOpenReplyForm(false)
           }} disabled={replyContent.length === 0} size="xs">
             {props.comment.approved ? 'Reply' : 'Reply and approve'}
           </Button>

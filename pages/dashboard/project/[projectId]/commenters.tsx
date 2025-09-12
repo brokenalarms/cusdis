@@ -1,15 +1,15 @@
-import { Anchor, Box, Button, Checkbox, Group, List, Stack, Text } from '@mantine/core'
+import { Button, Checkbox, Group, List, Stack, Text, ActionIcon, Collapse, Textarea } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import { Project } from '@prisma/client'
 import { signIn } from 'next-auth/client'
 import { useRouter } from 'next/router'
 import React from 'react'
-import { useMutation, useQueryClient } from 'react-query'
+import { AiOutlineDown, AiOutlineRight, AiOutlineCheck, AiOutlineSmile } from 'react-icons/ai'
 import { useQuery } from 'react-query'
 import { AdminPageLayout } from '../../../../components/AdminPageLayout'
+import { Comment } from '../../../../components/Comment'
 import { MODFlag } from '../../../../components/MODFlag'
-import { NewBadge } from '../../../../components/NewBadge'
 import { useAdminFilter } from '../../../../hooks/useAdminFilter'
 import { UserSession } from '../../../../service'
 import { CommentItem } from '../../../../service/comment.service'
@@ -18,9 +18,17 @@ import { MainLayoutData, ViewDataService } from '../../../../service/viewData.se
 import { apiClient } from '../../../../utils.client'
 import { getSession } from '../../../../utils.server'
 import { isAdmin } from '../../../../utils/adminHelpers'
-import { useOptimisticRemovalMutation, idExtractors } from '../../../../utils/optimistic-cache'
+import { useOptimisticRemovalMutation } from '../../../../utils/optimistic-cache'
 import { usePagePrefetch } from '../../../../utils/use-page-prefetch'
 import { useSocketCommentHandler } from '../../../../contexts/SocketContext'
+import { 
+  useApproveComment,
+  useUnapproveComment, 
+  useReplyToComment,
+  useDeleteComment,
+  handleApproveWithVerificationCheck,
+  updateCommentersPage
+} from '../../../../utils/comment-actions'
 
 type CommenterGroup = {
   email: string
@@ -56,12 +64,94 @@ const batchDeleteCommentsByEmail = async ({ projectId, emails }) => {
   return res.data
 }
 
+function CommentToolbar(props: {
+  comment: CommentItem,
+  refetch: any,
+  currentPage: number,
+}) {
+  const router = useRouter()
+  const [replyContent, setReplyContent] = React.useState("")
+  const [isOpenReplyForm, setIsOpenReplyForm] = React.useState(false)
+
+  const queryKey = ['getCommenters', { projectId: router.query.projectId as string, page: props.currentPage }]
+  
+  const approveCommentMutation = useApproveComment(queryKey, props.refetch, updateCommentersPage)
+  const unapproveCommentMutation = useUnapproveComment(queryKey, props.refetch, updateCommentersPage)
+  const replyCommentMutation = useReplyToComment(queryKey, props.refetch, updateCommentersPage)
+  const deleteCommentMutation = useDeleteComment(queryKey, props.refetch)
+
+  return (
+    <Stack>
+      <Group spacing={4}>
+        {props.comment.approved ? (
+          <Button 
+            loading={unapproveCommentMutation.isLoading} 
+            onClick={_ => {
+              unapproveCommentMutation.mutate({
+                commentId: props.comment.id
+              })
+            }} 
+            leftIcon={<AiOutlineCheck />} 
+            color="green" 
+            size="xs" 
+            variant={'light'}
+          >
+            Approved
+          </Button>
+        ) : (
+          <Button 
+            loading={approveCommentMutation.isLoading} 
+            onClick={_ => handleApproveWithVerificationCheck(props.comment, approveCommentMutation)}
+            leftIcon={<AiOutlineSmile />} 
+            size="xs" 
+            variant={'subtle'}
+          >
+            Approve
+          </Button>
+        )}
+        <Button onClick={_ => {
+          setIsOpenReplyForm(!isOpenReplyForm)
+        }} size="xs" variant={'subtle'}>
+          Reply
+        </Button>
+        <Button loading={deleteCommentMutation.isLoading} onClick={_ => {
+          deleteCommentMutation.mutate({
+            commentId: props.comment.id
+          })
+        }} color="red" size="xs" variant={'subtle'}>
+          Delete
+        </Button>
+      </Group>
+      {
+        isOpenReplyForm &&
+        <Stack>
+          <Textarea
+            autosize
+            minRows={2}
+            onChange={e => setReplyContent(e.currentTarget.value)}
+            placeholder="Reply as moderator"
+          />
+          <Button loading={replyCommentMutation.isLoading} onClick={_ => {
+            replyCommentMutation.mutate({
+              parentId: props.comment.id,
+              content: replyContent
+            })
+            setReplyContent('')
+            setIsOpenReplyForm(false)
+          }} disabled={replyContent.length === 0} size="xs">
+            {props.comment.approved ? 'Reply' : 'Reply and approve'}
+          </Button>
+        </Stack>
+      }
+    </Stack>
+  )
+}
+
 function CommenterToolbar(props: {
   commenter: CommenterGroup,
   refetch: any,
   currentPage: number,
 }) {
-  const queryClient = useQueryClient()
   const router = useRouter()
 
   const deleteCommenterMutation = useOptimisticRemovalMutation(
@@ -165,6 +255,20 @@ function CommentersPage(props: {
   const isSelected = React.useCallback((email: string) => selectedEmails.includes(email), [selectedEmails])
   const toggleSelected = (email: string) => {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(x => x !== email) : [...prev, email])
+  }
+
+  // Collapsible state for showing comments under each commenter
+  const [expandedCommenters, setExpandedCommenters] = React.useState<Set<string>>(new Set())
+  const toggleCommenterExpanded = (email: string) => {
+    setExpandedCommenters(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(email)) {
+        newSet.delete(email)
+      } else {
+        newSet.add(email)
+      }
+      return newSet
+    })
   }
 
   // Admin filtering using reusable hook
@@ -274,56 +378,44 @@ function CommentersPage(props: {
           <Group align="flex-start" spacing={12}>
             <Checkbox aria-label="Select commenter" checked={isSelected(commenter.email)} onChange={() => toggleSelected(commenter.email)} />
             <Stack sx={{ flex: 1 }}>
-              <Group spacing={8} sx={{
-                fontSize: 14
-              }}>
-                <Text sx={{
-                  fontWeight: 500
-                }}>
+              <Group spacing={8} sx={{ fontSize: 14 }}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => toggleCommenterExpanded(commenter.email)}
+                >
+                  {expandedCommenters.has(commenter.email) ? <AiOutlineDown /> : <AiOutlineRight />}
+                </ActionIcon>
+                <Text sx={{ fontWeight: 500 }}>
                   {commenter.nickname}
                 </Text>
                 {isAdmin(commenter) && <MODFlag />}
-                <Text sx={{
-                  fontWeight: 400,
-                  color: 'gray'
-                }}>
+                <Text sx={{ fontWeight: 400, color: 'gray' }}>
                   {commenter.email}
                 </Text>
-                <Text sx={{
-                  fontSize: 12,
-                  color: 'dimmed'
-                }}>
+                <Text sx={{ fontSize: 12, color: 'dimmed' }}>
                   ({commenter.commentCount} comment{commenter.commentCount !== 1 ? 's' : ''})
                 </Text>
               </Group>
               
-              {/* Show recent comments */}
-              <Stack spacing={8} sx={{ marginLeft: 16 }}>
-                {commenter.comments.slice(0, 3).map(comment => (
-                  <Box key={comment.id} sx={{ 
-                    padding: 8, 
-                    backgroundColor: '#f8f9fa', 
-                    borderRadius: 4,
-                    fontSize: 12
-                  }}>
-                    <Group spacing={4}>
-                      <Text sx={{ fontWeight: 500 }}>
-                        {comment.parsedCreatedAt}
-                      </Text>
-                      <Text>on</Text>
-                      <Anchor href={comment.page.url} target="_blank" size="sm">{comment.page.slug}</Anchor>
-                    </Group>
-                    <Text sx={{ marginTop: 4 }}>
-                      {comment.content.length > 100 ? comment.content.substring(0, 100) + '...' : comment.content}
-                    </Text>
-                  </Box>
-                ))}
-                {commenter.commentCount > 3 && (
-                  <Text size="xs" color="dimmed">
-                    ... and {commenter.commentCount - 3} more comment{commenter.commentCount - 3 !== 1 ? 's' : ''}
-                  </Text>
-                )}
-              </Stack>
+              <Collapse in={expandedCommenters.has(commenter.email)}>
+                <Stack spacing={12} sx={{ marginLeft: 24 }}>
+                  {commenter.comments.map(comment => (
+                    <Comment
+                      key={comment.id}
+                      comment={comment}
+                      showCheckbox={false}
+                      actions={
+                        <CommentToolbar
+                          comment={comment}
+                          refetch={getCommentersQuery.refetch}
+                          currentPage={page}
+                        />
+                      }
+                    />
+                  ))}
+                </Stack>
+              </Collapse>
               
               <CommenterToolbar 
                 commenter={commenter} 
