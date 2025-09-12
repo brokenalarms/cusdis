@@ -12,12 +12,12 @@ import { prisma } from "../../utils.server"
 import { ErrorCode } from "../error"
 
 const approveComment = async ({ token }) => {
-  const res = await apiClient.post(`/open/approve?token=${token}`)
+  const res = await apiClient.post(`/token/approve?token=${token}`)
   return res.data
 }
 
 const appendReply = async ({ replyContent, token }) => {
-  const res = await apiClient.post(`/open/approve?token=${token}`, {
+  const res = await apiClient.post(`/token/approve?token=${token}`, {
     replyContent
   })
   return res.data
