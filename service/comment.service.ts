@@ -10,13 +10,21 @@ import { EmailService } from './email.service'
 import { TokenService } from './token.service'
 import { makeConfirmReplyNotificationTemplate, makeEmailVerificationTemplate } from '../templates/confirm_reply_notification'
 import utc from 'dayjs/plugin/utc'
+import * as DOMPurify from 'isomorphic-dompurify'
 dayjs.extend(utc)
+
+function dompurifyPlugin(md: MarkdownIt) {
+    md.core.ruler.before('normalize', 'purify_dom', function purify_dom(state: any) {
+        state.src = DOMPurify.sanitize(state.src);
+    });
+}
 
 export const markdown = MarkdownIt({
   linkify: true,
 })
 
 markdown.disable(['image', 'link'])
+markdown.use(dompurifyPlugin)
 
 export type CommentWrapper = {
   commentCount: number

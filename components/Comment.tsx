@@ -3,6 +3,7 @@ import React from 'react'
 import { isAdmin } from '../utils/adminHelpers'
 import { MODFlag } from './MODFlag'
 import { CommentItem } from '../service/comment.service'
+import 'github-markdown-css/github-markdown-light.css'
 
 interface CommentProps {
   comment: CommentItem
@@ -70,7 +71,7 @@ export const Comment: React.FC<CommentProps> = ({
             borderLeft: isDeleted ? '4px solid red' : 'none',
             fontStyle: isDeleted ? 'italic' : 'normal'
           }}>
-            <div dangerouslySetInnerHTML={{ __html: comment.parsedContent }} />
+            <div className="markdown-body" dangerouslySetInnerHTML={{ __html: comment.parsedContent }} />
           </Box>
           
           {comment.replies.commentCount > 0 && (
