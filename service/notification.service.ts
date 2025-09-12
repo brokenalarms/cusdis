@@ -173,7 +173,7 @@ export class NotificationService extends RequestScopeService {
           const unsubToken = this.tokenService.genAcceptNotifyToken(ancestorId)
           const unsubscribeLink = `${
             resolvedConfig.host
-          }/api/open/confirm_reply_notification?token=${encodeURIComponent(
+          }/api/token/confirm-reply-notification?token=${encodeURIComponent(
             unsubToken,
           )}&unsubscribe=1`
           const viewLink = comment.page.url || `${resolvedConfig.host}`
@@ -261,7 +261,7 @@ export class NotificationService extends RequestScopeService {
       by_nickname: comment.by_nickname,
       by_email: comment.by_email,
       approve_link: `${resolvedConfig.host}/open/approve?token=${approveToken}`,
-      unsubscribe_link: `${resolvedConfig.host}/api/open/unsubscribe?token=${unsubscribeToken}`,
+      unsubscribe_link: `${resolvedConfig.host}/api/token/unsubscribe?token=${unsubscribeToken}`,
       content: markdown.render(comment.content),
       notification_preferences_link: `${resolvedConfig.host}/user`,
       email_verified: commenterEmailVerified,

@@ -494,7 +494,7 @@ export class CommentService extends RequestScopeService {
     pageUrl: string,
   ) {
     const confirmToken = this.tokenService.genAcceptNotifyToken(commentId)
-    const confirmLink = `${resolvedConfig.host}/api/open/confirm_reply_notification?token=${confirmToken}`
+    const confirmLink = `${resolvedConfig.host}/api/token/confirm-reply-notification?token=${confirmToken}`
     await this.emailService.send({
       to,
       from: this.emailService.sender,
@@ -523,7 +523,7 @@ export class CommentService extends RequestScopeService {
       commentId,
     })
 
-    const verifyLink = `${resolvedConfig.host}/api/open/confirm_email?token=${verifyToken}`
+    const verifyLink = `${resolvedConfig.host}/api/token/confirm-email?token=${verifyToken}`
 
     await this.emailService.send({
       to,

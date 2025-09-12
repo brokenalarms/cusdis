@@ -70,7 +70,7 @@ export const Comment: React.FC<CommentProps> = ({
             borderLeft: isDeleted ? '4px solid red' : 'none',
             fontStyle: isDeleted ? 'italic' : 'normal'
           }}>
-            {comment.content}
+            <div dangerouslySetInnerHTML={{ __html: comment.parsedContent }} />
           </Box>
           
           {comment.replies.commentCount > 0 && (
