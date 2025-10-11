@@ -2,6 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { statService } from '../../../../service/stat.service'
 import { prisma } from '../../../../utils.server'
 import { withProjectAuth } from '../../../../utils/auth-wrappers'
+import { markdown } from '../../../../service/comment.service'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 
 export default withProjectAuth(async function handler(
   req: NextApiRequest,
@@ -35,6 +40,8 @@ export default withProjectAuth(async function handler(
       createdAt: true,
       content: true,
       moderatorId: true,
+      approved: true,
+      deletedAt: true,
       page: {
         select: {
           slug: true,
@@ -61,15 +68,31 @@ export default withProjectAuth(async function handler(
     }
   >()
 
+  // Fetch verification status for all unique emails
+  const uniqueEmails = [...new Set(
+    allComments
+      .map(comment => comment.by_email)
+      .filter(Boolean) as string[]
+  )]
+
+  const verifiedCommenters = await prisma.commenter.findMany({
+    where: { email: { in: uniqueEmails } },
+    select: { email: true, verifiedAt: true }
+  })
+
+  const verificationMap = new Map(
+    verifiedCommenters.map(c => [c.email, Boolean(c.verifiedAt)])
+  )
+
   allComments.forEach((comment) => {
     // Group by moderatorId for admin comments, by_email for regular comments
     const groupKey = comment.moderatorId || comment.by_email
-    const displayEmail = comment.moderatorId 
+    const displayEmail = comment.moderatorId
       ? `admin-${comment.moderatorId}`
       : comment.by_email
-    
+
     if (!groupKey) return // Skip if no identifier available
-    
+
     if (!commenterMap.has(groupKey)) {
       commenterMap.set(groupKey, {
         email: displayEmail,
@@ -87,9 +110,21 @@ export default withProjectAuth(async function handler(
       commenter.isAdmin = true
     }
     if (commenter.comments.length < 3) {
+      // Format comment with proper structure matching CommentItem type
+      const timezoneOffsetInHour = Number(req.headers['x-timezone-offset'] || 0)
+      const parsedCreatedAt = dayjs
+        .utc(comment.createdAt)
+        .utcOffset(timezoneOffsetInHour)
+        .format('YYYY-MM-DD HH:mm')
+
+      const parsedContent = markdown.render(comment.content) as string
+
       commenter.comments.push({
         ...comment,
-        parsedCreatedAt: new Date(comment.createdAt).toLocaleString(),
+        parsedCreatedAt,
+        parsedContent,
+        isEmailVerified: comment.by_email ? verificationMap.get(comment.by_email) ?? false : true,
+        replies: { data: [], commentCount: 0, pageSize: 0, pageCount: 0 }
       })
     }
   })
